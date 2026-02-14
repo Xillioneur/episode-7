@@ -10,6 +10,7 @@
 #include <chrono>
 #include <future>
 #include <generator>
+#include <optional>
 
 #include "types.hpp"
 #include "graphics.hpp"
@@ -41,8 +42,10 @@ class Engine {
     
     float glitch_spawn_timer = 0.0f;
     float stability_timer = 0.0f;
+    float boss_spawn_timer = 60.0f; 
     float screenshake = 0.0f;
     float hit_stop = 0.0f;
+    float low_integrity_timer = 0.0f;
 
     struct GridPoint { Vec2 base; Vec2 offset; };
     std::vector<GridPoint> grid;
@@ -50,38 +53,29 @@ class Engine {
     const int WINDOW_W = 1200;
     const int WINDOW_H = 800;
 
-    std::generator<Vec2> spawn_pattern_generator() {
-        float angle = 0.0f;
-        while (true) {
-            int pattern = (int)(stability_timer / 15.0f) % 3;
-            if (pattern == 0) { 
-                angle += 0.4f;
-                float r = 900.0f;
-                co_yield Vec2(WINDOW_W/2 + std::cos(angle) * r, WINDOW_H/2 + std::sin(angle) * r);
-            } else if (pattern == 1) { 
-                static float tx = 0; tx += 0.5f;
-                float x = WINDOW_W/2 + std::sin(tx) * WINDOW_W/2;
-                float y = (rand() % 2) ? -60.0f : WINDOW_H + 60.0f;
-                co_yield Vec2(x, y);
-            } else { 
-                float a = rnd(0, std::numbers::pi_v<float>*2);
-                co_yield Vec2(WINDOW_W/2 + std::cos(a) * 800.0f, WINDOW_H/2 + std::sin(a) * 800.0f);
-            }
+    Vec2 generate_spawn_pos() {
+        static float angle = 0.0f;
+        int pattern = (int)(stability_timer / 15.0f) % 3;
+        if (pattern == 0) { 
+            angle += 0.4f;
+            float r = 900.0f;
+            return Vec2(WINDOW_W/2 + std::cos(angle) * r, WINDOW_H/2 + std::sin(angle) * r);
+        } else if (pattern == 1) { 
+            static float tx = 0; tx += 0.5f;
+            float x = WINDOW_W/2 + std::sin(tx) * WINDOW_W/2;
+            float y = (rand() % 2) ? -60.0f : WINDOW_H + 60.0f;
+            return Vec2(x, y);
+        } else { 
+            float a = rnd(0, std::numbers::pi_v<float>*2);
+            return Vec2(WINDOW_W/2 + std::cos(a) * 800.0f, WINDOW_H/2 + std::sin(a) * 800.0f);
         }
     }
 
-    std::generator<Vec2> spawn_gen_instance = spawn_pattern_generator();
-    using spawn_it_t = decltype(spawn_gen_instance.begin());
-    spawn_it_t spawn_it = spawn_gen_instance.begin();
-
 public:
     Engine() {
+        std::cout << "Engine Init Start..." << std::endl;
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-#if HAS_PRINT
-            std::print("SDL Init Error: {}\n", SDL_GetError());
-#else
-            std::cout << "SDL Init Error: " << SDL_GetError() << std::endl;
-#endif
+            std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
         }
         
         audio = std::make_unique<AudioEngine>();
@@ -97,7 +91,7 @@ public:
         gfx.r = renderer;
 
         gfx.font = TTF_OpenFont("/System/Library/Fonts/Supplemental/Arial.ttf", 64);
-        if (!gfx.font) gfx.font = TTF_OpenFont("/System/Library/Fonts/Helvetica.ttc", 64);
+        if (!gfx.font) gfx.font = TTF_OpenFont("/Library/Fonts/Arial.ttf", 64);
 
         for(int y = 0; y <= WINDOW_H; y += GRID_SIZE) {
             for(int x = 0; x <= WINDOW_W; x += GRID_SIZE) {
@@ -107,6 +101,7 @@ public:
         
         qtree = std::make_unique<QuadTree>(Rect{0, 0, (float)WINDOW_W, (float)WINDOW_H});
         reset_game();
+        std::cout << "Engine Init Complete." << std::endl;
     }
 
     ~Engine() {
@@ -123,8 +118,13 @@ public:
         player = std::make_unique<Player>(Vec2(WINDOW_W/2, WINDOW_H/2));
         glitch_spawn_timer = 0;
         stability_timer = 0;
+        boss_spawn_timer = 60.0f;
         screenshake = 0;
-        if (audio) audio->set_binaural(150.0f, 10.0f, 0.2f);
+        low_integrity_timer = 0;
+        if (audio) {
+            audio->set_binaural(432.0f, 10.0f, 0.15f);
+            audio->set_player_state(0.5f, 0.0f, false);
+        }
     }
 
     void spawn_particle(Vec2 p, Color c, int count, float speed = 100.0f) {
@@ -161,13 +161,28 @@ public:
     }
 
     void update(float dt) {
+        // ALWAYS update audio spatial state to allow for fading
+        if (audio) {
+            float x_norm = player->pos.x / (float)WINDOW_W;
+            float speed_norm = player->vel.mag() / player->speed;
+            audio->set_player_state(x_norm, speed_norm, state == State::PLAYING);
+        }
+
         if (state != State::PLAYING) return;
         stability_timer += dt;
         
         if (audio) {
             float beat_freq = 10.0f + (stability_timer / 12.0f);
-            float carrier_freq = 150.0f + std::sin(stability_timer * 0.05f) * 30.0f;
-            audio->set_binaural(carrier_freq, std::min(beat_freq, 60.0f), 0.2f + std::min(stability_timer * 0.0005f, 0.1f));
+            float carrier_freq = 432.0f + std::sin(stability_timer * 0.05f) * 10.0f;
+            audio->set_binaural(carrier_freq, std::min(beat_freq, 60.0f), 0.15f + std::min(stability_timer * 0.0005f, 0.1f));
+            
+            if (player->integrity < 30.0f) {
+                low_integrity_timer += dt;
+                if (low_integrity_timer >= 0.4f) {
+                    low_integrity_timer = 0;
+                    audio->play_sfx(108.0f, 0.15f, 0.1f);
+                }
+            }
         }
 
         if (screenshake > 0) screenshake -= dt * 30.0f;
@@ -191,7 +206,7 @@ public:
             player->dash_cooldown = 1.0f;
             screenshake = 6.0f;
             spawn_particle(player->pos, Colors::NEON_BLUE, 15);
-            if (audio) audio->play_sfx(180.0f, 0.3f, 0.15f); // Soft dash whoosh
+            if (audio) audio->play_sfx(216.0f, 0.25f, 0.2f, false, 1.0f, player->pos.x / (float)WINDOW_W); 
         }
 
         if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT) && player->harmony_timer <= 0) {
@@ -199,7 +214,7 @@ public:
             Vec2 fwd(std::cos(player->angle), std::sin(player->angle));
             player->vel = player->vel - fwd * 60.0f;
             screenshake = 2.0f;
-            if (audio) audio->play_sfx(1500.0f + rnd(-100, 100), 0.06f, 0.04f); // High chime for lasers
+            if (audio) audio->play_divine_ray();
 
             for (int i = 0; i < player->ray_count; ++i) {
                 float angle_offset = (i - (player->ray_count-1)/2.0f) * 0.12f;
@@ -214,14 +229,28 @@ public:
         glitch_spawn_timer -= dt;
         if (glitch_spawn_timer <= 0) {
             float difficulty = stability_timer / 30.0f;
-            glitch_spawn_timer = 1.3f / (1.0f + difficulty * 0.4f);
-            Vec2 spawn_pos = *spawn_it;
-            ++spawn_it;
+            glitch_spawn_timer = 1.2f / (1.0f + difficulty * 0.4f);
+            Vec2 spawn_pos = generate_spawn_pos();
             ObjType t = ObjType::GLITCH_BASIC;
             if (difficulty > 1.0f && rand()%4==0) t = ObjType::GLITCH_TANK;
             if (difficulty > 2.0f && rand()%4==0) t = ObjType::GLITCH_DASH;
             auto glitch_res = create_glitch(spawn_pos, t, difficulty);
-            if (glitch_res) entities.push_back(std::move(*glitch_res));
+            if (glitch_res) {
+                entities.push_back(std::move(*glitch_res));
+                if (audio && (t == ObjType::GLITCH_TANK)) audio->play_glitch_spawn();
+            }
+        }
+
+        boss_spawn_timer -= dt;
+        if (boss_spawn_timer <= 0) {
+            boss_spawn_timer = 60.0f;
+            Vec2 spawn_pos = generate_spawn_pos();
+            auto boss_res = create_glitch(spawn_pos, ObjType::GLITCH_BOSS, stability_timer / 30.0f);
+            if (boss_res) {
+                entities.push_back(std::move(*boss_res));
+                if (audio) audio->play_glitch_spawn(); 
+                screenshake = 20.0f;
+            }
         }
 
         qtree->clear();
@@ -233,20 +262,20 @@ public:
             e->update(dt);
             if (e->dead) continue;
 
-            if (e->type == ObjType::GLITCH_BASIC || e->type == ObjType::GLITCH_TANK || e->type == ObjType::GLITCH_DASH) {
+            if (e->type == ObjType::GLITCH_BASIC || e->type == ObjType::GLITCH_TANK || e->type == ObjType::GLITCH_DASH || e->type == ObjType::GLITCH_BOSS) {
                 Vec2 dir = (player->pos - e->pos).norm();
-                float move_speed = (e->type == ObjType::GLITCH_TANK) ? 50.0f : ((e->type == ObjType::GLITCH_DASH) ? 170.0f : 90.0f);
+                float move_speed = (e->type == ObjType::GLITCH_BOSS) ? 40.0f : ((e->type == ObjType::GLITCH_TANK) ? 50.0f : ((e->type == ObjType::GLITCH_DASH) ? 170.0f : 90.0f));
                 e->vel = e->vel + dir * move_speed * dt * 2.0f;
                 e->vel = e->vel * 0.95f;
 
                 if (e->pos.dist(player->pos) < e->radius + player->radius) {
-                    player->integrity -= 8;
-                    screenshake = 10.0f;
+                    player->integrity -= (e->type == ObjType::GLITCH_BOSS) ? 30 : 8;
+                    screenshake = (e->type == ObjType::GLITCH_BOSS) ? 30.0f : 10.0f;
                     hit_stop = 0.08f;
-                    spawn_particle(player->pos, {255, 200, 100, 255}, 20); // Golden sparkle on hit
+                    spawn_particle(player->pos, {255, 200, 100, 255}, 20);
                     apply_force_to_grid(player->pos, 40.0f, 180.0f);
-                    if (audio) audio->play_sfx(220.0f, 0.4f, 0.3f); // Soft resonant pulse
-                    e->dead = true;
+                    if (audio) audio->play_sfx(216.0f, 0.35f, 0.35f, true, 1.0f, player->pos.x / (float)WINDOW_W);
+                    e->dead = (e->type != ObjType::GLITCH_BOSS); 
                     if (player->integrity <= 0) state = State::GAME_OVER;
                 }
             }
@@ -256,22 +285,26 @@ public:
                 std::vector<GameObject*> targets;
                 qtree->query(Rect{e->pos.x - r, e->pos.y - r, r*2, r*2}, targets);
                 for (auto target : targets) {
-                    if (target->type == ObjType::GLITCH_BASIC || target->type == ObjType::GLITCH_TANK || target->type == ObjType::GLITCH_DASH) {
+                    if (target->type == ObjType::GLITCH_BASIC || target->type == ObjType::GLITCH_TANK || target->type == ObjType::GLITCH_DASH || target->type == ObjType::GLITCH_BOSS) {
                         if (e->pos.dist(target->pos) < target->radius + e->radius) {
                             Glitch* g = static_cast<Glitch*>(target);
                             g->stability -= static_cast<HarmonyRay*>(e.get())->damage;
                             e->dead = true;
                             spawn_particle(e->pos, Colors::NEON_BLUE, 3);
+                            if (audio) audio->play_impact(); 
                             if (g->stability <= 0) {
                                 g->dead = true;
-                                spawn_particle(g->pos, g->color, 18);
-                                apply_force_to_grid(g->pos, 25.0f, 130.0f);
-                                if (audio) audio->play_sfx(440.0f + rnd(0, 440), 0.15f, 0.2f); // Musical chime on harmonization
-                                entities.push_back(std::make_unique<HarmonyOrb>(g->pos, 10.0f));
+                                spawn_particle(g->pos, g->color, (g->type == ObjType::GLITCH_BOSS) ? 100 : 18);
+                                apply_force_to_grid(g->pos, (g->type == ObjType::GLITCH_BOSS) ? 100.0f : 25.0f, 250.0f);
+                                if (audio) audio->play_sfx(528.0f + rnd(0, 528), 0.15f, 0.25f, false, 1.0f, g->pos.x / (float)WINDOW_W);
+                                entities.push_back(std::make_unique<HarmonyOrb>(g->pos, (g->type == ObjType::GLITCH_BOSS) ? 100.0f : 10.0f));
                             }
                             break;
                         }
                     }
+                }
+                if (!e->dead && static_cast<HarmonyRay*>(e.get())->life < dt) {
+                    if (audio) audio->play_dissipate();
                 }
             }
 
@@ -281,10 +314,10 @@ public:
                 if (dist < player->radius + 12.0f) {
                     e->dead = true;
                     player->harmony_xp += static_cast<HarmonyOrb*>(e.get())->value;
+                    if (audio) audio->play_collect_harmony(); 
                     if (player->harmony_xp >= player->harmony_next) {
                         player->harmony_xp = 0; player->harmony_next *= 1.25f; player->level++;
                         state = State::EVOLUTION;
-                        if (audio) audio->play_sfx(880.0f, 0.5f, 0.5f);
                     }
                 }
             }
@@ -293,7 +326,7 @@ public:
     }
 
     void render() {
-        SDL_SetRenderDrawColor(renderer, 10, 10, 25, 255); // Slightly bluer background
+        SDL_SetRenderDrawColor(renderer, 10, 10, 25, 255);
         SDL_RenderClear(renderer);
         gfx.set_color({50, 100, 255, 40});
         int cols = (WINDOW_W / GRID_SIZE) + 1;
@@ -311,13 +344,20 @@ public:
                     gfx.set_color(p->color, p->life);
                     gfx.draw_circle(p->pos, p->radius * p->life);
                 } else if (e->type == ObjType::HARMONY_RAY) {
-                    // Draw laser beam
                     gfx.set_color(e->color, 0.8f);
                     Vec2 fwd = e->vel.norm() * 40.0f;
                     gfx.draw_line(e->pos, e->pos - fwd);
                     gfx.draw_glowing_circle(e->pos, e->radius, e->color);
                 } else {
                     gfx.draw_glowing_circle(e->pos, e->radius, e->color);
+                    if (e->type == ObjType::GLITCH_BOSS) {
+                        Glitch* g = static_cast<Glitch*>(e.get());
+                        float pct = g->stability / g->max_stability;
+                        gfx.set_color({100, 100, 100, 255});
+                        gfx.draw_line(e->pos + Vec2(-40, -70), e->pos + Vec2(40, -70));
+                        gfx.set_color(e->color);
+                        gfx.draw_line(e->pos + Vec2(-40, -70), e->pos + Vec2(-40 + 80 * pct, -70));
+                    }
                 }
             }
             Vec2 dir(std::cos(player->angle), std::sin(player->angle));
@@ -359,9 +399,21 @@ public:
                     if (state == State::MENU && ev.key.keysym.sym == SDLK_SPACE) state = State::PLAYING;
                     if (state == State::GAME_OVER && ev.key.keysym.sym == SDLK_SPACE) { reset_game(); state = State::PLAYING; }
                     if (state == State::EVOLUTION) {
-                        if (ev.key.keysym.sym == SDLK_1) { player->ray_count++; state = State::PLAYING; }
-                        if (ev.key.keysym.sym == SDLK_2) { player->harmony_power *= 1.35f; state = State::PLAYING; }
-                        if (ev.key.keysym.sym == SDLK_3) { player->harmony_rate *= 0.85f; state = State::PLAYING; }
+                        if (ev.key.keysym.sym == SDLK_1) { 
+                            player->ray_count++; 
+                            if(audio) audio->play_evolve_ray_density();
+                            state = State::PLAYING; 
+                        }
+                        if (ev.key.keysym.sym == SDLK_2) { 
+                            player->harmony_power *= 1.35f; 
+                            if(audio) audio->play_evolve_harmony_power();
+                            state = State::PLAYING; 
+                        }
+                        if (ev.key.keysym.sym == SDLK_3) { 
+                            player->harmony_rate *= 0.85f; 
+                            if(audio) audio->play_evolve_resonance_rate();
+                            state = State::PLAYING; 
+                        }
                     }
                 }
             }

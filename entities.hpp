@@ -6,7 +6,7 @@
 #include <memory>
 #include <expected>
 
-enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, HARMONY_RAY, HARMONY_ORB, PARTICLE };
+enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, GLITCH_BOSS, HARMONY_RAY, HARMONY_ORB, PARTICLE };
 
 class GameObject {
 public:
@@ -46,7 +46,7 @@ public:
 class HarmonyRay : public GameObject {
 public:
     float damage = 10.0f;
-    float life = 0.5f; // Fast, short-lived laser burst
+    float life = 0.5f; 
     HarmonyRay(Vec2 p, Vec2 v, float dmg, Color c) : GameObject(p, ObjType::HARMONY_RAY) {
         vel = v;
         damage = dmg;
@@ -87,7 +87,7 @@ public:
     float harmony_next = 50;
     
     int ray_count = 1;
-    float ray_speed = 1800.0f; // Very fast lasers
+    float ray_speed = 1800.0f; 
     float harmony_power = 15.0f;
 
     Player(Vec2 p) : GameObject(p, ObjType::PLAYER) {
@@ -117,17 +117,21 @@ public:
         } else if (t == ObjType::GLITCH_TANK) {
             max_stability = stability = 100.0f * scale;
             radius = 24.0f;
-            color = Colors::NEON_ORANGE; // Changed from RED to a warmer tone
+            color = Colors::NEON_ORANGE;
         } else if (t == ObjType::GLITCH_DASH) {
             max_stability = stability = 20.0f * scale;
             radius = 10.0f;
-            color = {200, 100, 255, 255}; // Purple dashers
+            color = {200, 100, 255, 255}; 
+        } else if (t == ObjType::GLITCH_BOSS) {
+            max_stability = stability = 1000.0f * (1.0f + difficulty_mult * 0.5f);
+            radius = 60.0f;
+            color = {255, 255, 50, 255}; // Bright yellow for boss
         }
     }
 };
 
 inline std::expected<std::unique_ptr<Glitch>, std::string> create_glitch(Vec2 p, ObjType t, float diff) {
-    if (t != ObjType::GLITCH_BASIC && t != ObjType::GLITCH_DASH && t != ObjType::GLITCH_TANK) {
+    if (t != ObjType::GLITCH_BASIC && t != ObjType::GLITCH_DASH && t != ObjType::GLITCH_TANK && t != ObjType::GLITCH_BOSS) {
         return std::unexpected("Invalid glitch type");
     }
     return std::make_unique<Glitch>(p, t, diff);
