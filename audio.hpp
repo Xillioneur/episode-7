@@ -65,79 +65,87 @@ public:
         harmony_progress = std::clamp(progress_norm, 0.0f, 1.0f);
     }
 
+    // --- HYPERREAL DIVINE SFX ---
+
     void play_divine_ray() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
         float p = player_pan.load();
-        play_sfx_internal(528.0f, 0.04f, 0.12f, false, 0.999f, p, 0.002f);
-        play_sfx_internal(1056.0f, 0.015f, 0.08f, false, 1.0f, p, 0.001f);
+        float b40 = 40.0f;
+        
+        // 1. ENERGY CORE (Binaural Focus 528Hz)
+        play_sfx_internal(528.0f, 0.12f, 0.25f, false, 0.994f, 0.0f, 0.001f); // Left
+        play_sfx_internal(528.0f + b40, 0.12f, 0.25f, false, 0.994f, 1.0f, 0.001f); // Right
+        
+        // 2. PRISMATIC TRANSIENT (The "Perfect perfect" bite)
+        play_sfx_internal(1056.0f, 0.08f, 0.12f, false, 0.985f, p, 0.001f);
+        
+        // 3. SUB-QUANTUM THUMP (Physical weight)
+        play_sfx_internal(44.0f, 0.15f, 0.15f, false, 0.99f, p, 0.002f);
     }
 
     void play_collect_harmony() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
         float p = player_pan.load();
-        play_sfx_internal(659.25f, 0.08f, 0.6f, false, 1.0f, p, 0.001f);
-        play_sfx_internal(55.0f, 0.12f, 0.4f, false, 1.0f, p, 0.05f);
+        play_sfx_internal(659.25f, 0.25f, 0.8f, false, 1.0f, p, 0.01f);
+        play_sfx_internal(55.0f, 0.35f, 0.5f, false, 1.0f, p, 0.05f); 
     }
 
     void play_warp_jump() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
         float b40 = 40.0f;
-        // DIMENSIONAL ANCHOR JUMP (Pure Sub-Bass Event)
-        // Layered sine stack for physically massive but pristine punch
-        play_sfx_internal(32.0f, 0.6f, 1.5f, false, 0.992f, 0.0f, 0.005f); 
-        play_sfx_internal(32.0f + b40, 0.6f, 1.5f, false, 0.992f, 1.0f, 0.005f);
-        play_sfx_internal(64.0f, 0.4f, 1.0f, false, 0.99f, 0.0f, 0.002f);
-        play_sfx_internal(64.0f + b40, 0.4f, 1.0f, false, 0.99f, 1.0f, 0.002f);
-        play_sfx_internal(128.0f, 0.2f, 0.6f, false, 0.98f, 0.5f, 0.001f);
+        jump_duck_env = 1.0f;
+        play_sfx_internal(32.0f, 0.65f, 1.2f, false, 0.992f, 0.0f, 0.005f); 
+        play_sfx_internal(32.0f + b40, 0.65f, 1.2f, false, 0.992f, 1.0f, 0.005f);
+        play_sfx_internal(64.0f, 0.45f, 0.8f, false, 0.99f, 0.5f, 0.002f);
     }
 
     void play_restoration_sigh() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(27.5f, 0.35f, 1.5f, false, 1.0f, 0.5f, 0.1f);
-        play_sfx_internal(55.0f, 0.25f, 1.2f, false, 1.0f, 0.5f, 0.05f);
+        play_sfx_internal(27.5f, 0.55f, 1.5f, false, 1.0f, 0.5f, 0.1f);
+        play_sfx_internal(55.0f, 0.45f, 1.2f, false, 1.0f, 0.5f, 0.05f);
+        play_sfx_internal(528.0f, 0.15f, 1.2f, false, 1.0f, 0.5f, 0.05f);
     }
 
     void play_impact() { 
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(110.0f, 0.15f, 0.1f, false, 0.99f, 0.5f, 0.002f); 
-        play_sfx_internal(741.0f, 0.04f, 0.05f, false, 0.99f, 0.5f, 0.002f); 
+        play_sfx_internal(82.41f, 0.35f, 0.15f, false, 0.99f, 0.5f, 0.005f); 
+        play_sfx_internal(110.0f, 0.25f, 0.1f, false, 0.99f, 0.5f, 0.002f);
     }
 
     void play_evolve_ray_density() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<6; ++i) play_sfx_internal(528.0f * (1.0f + i * 0.25f), 0.04f, 0.6f, false, 1.001f, (float)i/5.0f, 0.02f);
+        for(int i=0; i<6; ++i) play_sfx_internal(528.0f * (1.0f + i * 0.25f), 0.08f, 0.6f, false, 1.001f, (float)i/5.0f, 0.02f);
     }
 
     void play_evolve_harmony_power() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(36.71f, 0.4f, 2.0f, false, 1.0f, 0.5f, 0.2f);
-        play_sfx_internal(74.0f, 0.25f, 1.5f, false, 1.0f, 0.5f, 0.1f);
+        play_sfx_internal(36.71f, 0.65f, 2.0f, false, 1.0f, 0.5f, 0.2f);
+        play_sfx_internal(74.0f, 0.45f, 1.5f, false, 1.0f, 0.5f, 0.1f);
     }
 
     void play_evolve_resonance_rate() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<10; ++i) play_sfx_internal(800.0f + i * 200.0f, 0.03f, 0.3f, false, 0.999f, (float)i/9.0f, 0.01f);
+        for(int i=0; i<10; ++i) play_sfx_internal(800.0f + i * 200.0f, 0.06f, 0.3f, false, 0.999f, (float)i/9.0f, 0.01f);
     }
 
     void play_glitch_spawn() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(55.0f, 0.15f, 1.5f, false, 0.9998f, 0.5f, 0.01f);
-        play_sfx_internal(110.0f, 0.12f, 1.2f, false, 0.9998f, 0.5f, 0.02f);
+        play_sfx_internal(55.0f, 0.35f, 1.5f, false, 0.9998f, 0.5f, 0.01f);
     }
     
     void play_dissipate() { 
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(2112.0f, 0.01f, 0.1f, true, 1.0f, 0.5f, 0.02f); 
+        play_sfx_internal(432.0f, 0.05f, 0.1f, false, 1.0f, 0.5f, 0.02f); 
     }
 
     void set_binaural(float carrier, float beat, float amp) {
@@ -169,7 +177,7 @@ private:
     
     std::atomic<float> target_carrier{432.0f}; 
     std::atomic<float> target_beat{40.0f}; 
-    std::atomic<float> target_amp{0.15f};
+    std::atomic<float> target_amp{0.12f};
     std::atomic<float> player_pan{0.5f};
     std::atomic<float> player_speed{0.0f};
     std::atomic<float> target_engine_vol{0.0f};
@@ -196,11 +204,11 @@ private:
     float lead_phase_l = 0.0f, lead_phase_r = 0.0f, lead_amp = 0.0f, lead_freq = 432.0f;
     float bin_phase_l = 0.0f, bin_phase_r = 0.0f;
     
-    // --- DIMENSIONAL OVERDRIVE ENGINE STATE ---
-    float reactor_phases_l[12] = {0};
-    float reactor_phases_r[12] = {0};
-    float hull_resonance_phase = 0.0f;
-    float variance_timer = 0.0f;
+    float sidechain_duck = 1.0f; 
+    float jump_duck_env = 0.0f; 
+    float swoosh_phase_l = 0.0f;
+    float swoosh_phase_r = 0.0f;
+    float grounding_bed_phase = 0.0f;
 
     static constexpr int MAX_SFX = 96;
     Voice sfx_voices[MAX_SFX];
@@ -220,6 +228,13 @@ private:
         engine->generate(buffer);
     }
 
+    float soft_limit(float x) {
+        float threshold = 0.85f;
+        if (std::abs(x) < threshold) return x;
+        if (x > 0) return threshold + (1.0f - threshold) * std::tanh((x - threshold) / (1.0f - threshold));
+        return -threshold - (1.0f - threshold) * std::tanh((-x - threshold) / (1.0f - threshold));
+    }
+
     void generate(std::span<float> buffer) {
         std::lock_guard<std::mutex> lock(mtx);
         float sample_rate = static_cast<float>(actual.freq);
@@ -232,12 +247,11 @@ private:
 
         float pan = player_pan.load();
         float speed = player_speed.load();
-        float prog = harmony_progress.load();
         float step_dur = 60.0f / (bpm * 4.0f);
 
         for (size_t i = 0; i < buffer.size(); i += 2) {
             step_timer += 1.0f / sample_rate;
-            variance_timer += 1.0f / sample_rate;
+            jump_duck_env = std::lerp(jump_duck_env, 0.0f, 0.001f);
             
             if (step_timer >= step_dur) {
                 step_timer -= step_dur;
@@ -251,70 +265,45 @@ private:
                 else if (global_bar < 384) current_movement = RESOLUTION;
                 else { global_bar = 0; }
 
-                std::array<float, 4> chords = {1.0f, 0.84f, 1.2f, 0.94f}; 
-                float chord = chords[(global_bar / 8) % 4];
-
                 if (current_movement >= GENESIS) {
-                    if (global_step % 4 == 0) { kick_env = 1.0f; kick_phase_l = kick_phase_r = 0.0f; }
-                    if (global_step % 16 == 4 || global_step % 16 == 12) { snare_env = 1.0f; snare_tone_l = snare_tone_r = 0.0f; }
-                    if (global_step % 2 == 1) hat_env = 0.4f;
-                    if (global_step % 8 == 0) { bass_amp = 0.85f; bass_freq = current_carrier * chord * 0.25f; }
+                    if (global_step % 4 == 0) { kick_env = 1.0f; kick_phase_l = kick_phase_r = 0.0f; sidechain_duck = 0.6f; }
+                    if (global_step % 16 == 4 || global_step % 16 == 12) { snare_env = 1.0f; snare_tone_l = snare_tone_r = 0.0f; sidechain_duck = 0.8f; }
+                    if (global_step % 8 == 0) { bass_amp = 0.8f; bass_freq = current_carrier * 0.25f; }
                     if (global_step % 4 == 0) {
                         std::array<float, 7> scale = {1.0f, 1.125f, 1.25f, 1.333f, 1.5f, 1.666f, 1.875f};
-                        lead_freq = current_carrier * chord * scale[global_step % 7];
-                        lead_amp = 0.45f;
+                        lead_freq = current_carrier * scale[global_step % 7];
+                        lead_amp = 0.4f;
                     }
                 }
             }
 
+            sidechain_duck = std::lerp(sidechain_duck, 1.0f, 0.005f);
+            float master_duck = sidechain_duck * (1.0f - jump_duck_env * 0.7f);
+
             float out_l = 0.0f, out_r = 0.0f;
-            float b40 = 40.0f; float b20 = 20.0f;
+            float b40 = 40.0f;
             float pan_l = std::cos(pan * (std::numbers::pi_v<float> * 0.5f));
             float pan_r = std::sin(pan * (std::numbers::pi_v<float> * 0.5f));
 
             current_intensity.store(std::lerp(current_intensity.load(), kick_env * 0.5f + bass_amp * 0.5f, 0.001f));
 
-            // --- 1. STARSHIP OVERDRIVE (HARMONIC EXPANSION) ---
-            // A. Physical Hull Vibrations (Step 4 Randomization)
-            float hull_f = 15.0f + 30.0f * std::sin(variance_timer * 0.1f);
-            hull_resonance_phase += (hull_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            float vibration = 0.9f + 0.1f * std::sin(hull_resonance_phase);
+            // --- 1. SILENT SOVEREIGN ---
+            float swoosh_f = 432.0f * (1.0f + speed * 0.15f);
+            swoosh_phase_l += (swoosh_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            swoosh_phase_r += ((swoosh_f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            float swoosh_amp = 0.025f * speed * current_engine_vol * master_duck;
+            out_l += std::sin(swoosh_phase_l) * swoosh_amp * pan_l;
+            out_r += std::sin(swoosh_phase_r) * swoosh_amp * pan_r;
 
-            // B. Expanding Solfeggio Stack (Accelerating Timbre)
-            // As speed increases, more harmonics emerge (Doppler-like expansion)
-            std::array<float, 12> r_freqs = { 
-                27.0f, 54.0f, 81.0f, 108.0f,   // Sub Foundations
-                162.0f, 216.0f, 324.0f, 432.0f, // Core Power
-                528.0f, 648.0f, 864.0f, 1056.0f // High-Velocity Shimmers
-            };
-            std::array<float, 12> r_amps = { 
-                0.50f, 0.35f, 0.20f, 0.15f, 
-                0.10f, 0.08f, 0.06f, 0.04f, 
-                0.03f, 0.02f, 0.015f, 0.01f 
-            };
+            grounding_bed_phase += (32.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            float ground = std::sin(grounding_bed_phase) * 0.035f * current_engine_vol * master_duck;
+            out_l += ground; out_r += ground;
 
-            for(int j=0; j<12; ++j) {
-                // Harmonic Emergence: higher layers only loud at high speed
-                float speed_threshold = (float)j / 12.0f;
-                float dynamic_amp = r_amps[j];
-                if (j >= 4) dynamic_amp *= std::clamp((speed - speed_threshold) * 4.0f, 0.0f, 1.0f);
-
-                // DYNAMIC REVING: frequency shifts up with speed
-                float f_l = r_freqs[j] * (1.0f + speed * 0.35f); 
-                float f_r = f_l + ((j < 4) ? b20 : b40);
-                
-                out_l += std::sin(reactor_phases_l[j]) * dynamic_amp * current_engine_vol * vibration * pan_l;
-                out_r += std::sin(reactor_phases_r[j]) * dynamic_amp * current_engine_vol * vibration * pan_r;
-                
-                reactor_phases_l[j] += (f_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                reactor_phases_r[j] += (f_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            }
-
-            // --- 2. GENERATIVE MUSIC ---
+            // --- 2. MUSIC ---
             auto apply_b = [&](float f, float amp, float& p_l, float& p_r, bool organ = false) {
                 float mf_l = f; float mf_r = f + b40;
-                float s_l = organ ? divine_wave(p_l, 3 + (int)(prog*4)) : std::sin(p_l);
-                float s_r = organ ? divine_wave(p_r, 3 + (int)(prog*4)) : std::sin(p_r);
+                float s_l = organ ? divine_wave(p_l, 3) : std::sin(p_l);
+                float s_r = organ ? divine_wave(p_r, 3) : std::sin(p_r);
                 out_l += s_l * amp; out_r += s_r * amp;
                 p_l += (mf_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 p_r += (mf_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
@@ -322,8 +311,8 @@ private:
 
             if (kick_env > 0.001f) {
                 float k_f = 45.0f + 250.0f * (kick_env * kick_env);
-                out_l += std::sin(kick_phase_l) * kick_env * 0.6f;
-                out_r += std::sin(kick_phase_r) * kick_env * 0.6f;
+                out_l += std::sin(kick_phase_l) * kick_env * 0.5f;
+                out_r += std::sin(kick_phase_r) * kick_env * 0.5f;
                 kick_phase_l += (k_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 kick_phase_r += ((k_f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 kick_env *= 0.9993f;
@@ -331,24 +320,25 @@ private:
             if (snare_env > 0.001f) {
                 float s_l = (std::sin(snare_tone_l) * 0.4f + noise_dist(noise_gen) * 0.6f);
                 float s_r = (std::sin(snare_tone_r) * 0.4f + noise_dist(noise_gen) * 0.6f);
-                out_l += s_l * snare_env * 0.35f; out_r += s_r * snare_env * 0.35f;
+                out_l += s_l * snare_env * 0.3f; out_r += s_r * snare_env * 0.3f;
                 snare_tone_l += (220.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 snare_tone_r += ((220.0f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 snare_env *= 0.9991f;
             }
             if (hat_env > 0.001f) {
-                float h = noise_dist(noise_gen) * hat_env * 0.08f;
+                float h = noise_dist(noise_gen) * hat_env * 0.06f;
                 out_l += h; out_r += h; hat_env *= 0.997f;
             }
             if (bass_amp > 0.001f) { apply_b(bass_freq, bass_amp * 0.12f, bass_phase_l, bass_phase_r, true); bass_amp *= 0.99985f; }
             if (lead_amp > 0.001f) { apply_b(lead_freq, lead_amp * 0.06f, lead_phase_l, lead_phase_r); lead_amp *= 0.99975f; }
 
-            out_l += std::sin(bin_phase_l) * current_amp * 0.25f * (1.0f - kick_env*0.5f);
-            out_r += std::sin(bin_phase_r) * current_amp * 0.25f * (1.0f - kick_env*0.5f);
+            // --- 3. BINAURAL FOCUS ---
+            out_l += std::sin(bin_phase_l) * current_amp * 0.15f * (1.0f - kick_env*0.5f);
+            out_r += std::sin(bin_phase_r) * current_amp * 0.15f * (1.0f - kick_env*0.5f);
             bin_phase_l += (432.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
             bin_phase_r += ((432.0f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
 
-            // --- 3. SFX ---
+            // --- 4. SFX ---
             for (auto& vox : sfx_voices) {
                 if (vox.active) {
                     float s = vox.is_noise ? (noise_dist(noise_gen) * 0.4f) : std::sin(vox.phase);
@@ -362,8 +352,8 @@ private:
                 }
             }
 
-            buffer[i] = std::clamp(out_l, -1.0f, 1.0f);
-            buffer[i + 1] = std::clamp(out_r, -1.0f, 1.0f);
+            buffer[i] = soft_limit(out_l);
+            buffer[i + 1] = soft_limit(out_r);
         }
     }
 };

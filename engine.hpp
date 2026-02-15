@@ -408,13 +408,83 @@ public:
                     }
                 }
             }
+            // --- THE PRECISION MUSCLE-SOVEREIGN ---
             Vec2 dir(std::cos(player->angle), std::sin(player->angle));
+            Vec2 side(-dir.y, dir.x);
+            float speed_factor = player->vel.mag() / player->speed;
+            
+            // RE-SCALED GEOMETRY (Compact & Powerful)
             Vec2 nose = player->pos + dir * 24.0f;
-            Vec2 l_wing = player->pos + dir * -14.0f + Vec2(-dir.y, dir.x) * 16.0f;
-            Vec2 r_wing = player->pos + dir * -14.0f + Vec2(dir.y, -dir.x) * 16.0f;
+            Vec2 hood_l = player->pos + dir * 8.0f - side * 7.0f;
+            Vec2 hood_r = player->pos + dir * 8.0f + side * 7.0f;
+            Vec2 cabin_l = player->pos - dir * 4.0f - side * 11.0f;
+            Vec2 cabin_r = player->pos - dir * 4.0f + side * 11.0f;
+            Vec2 rear_l = player->pos - dir * 20.0f - side * 13.0f;
+            Vec2 rear_r = player->pos - dir * 20.0f + side * 13.0f;
+            
+            // Dynamic Stabilizers (Reactive flare)
+            float flare = 4.0f + speed_factor * 10.0f;
+            Vec2 fin_l = player->pos - dir * 10.0f - side * (11.0f + flare);
+            Vec2 fin_r = player->pos - dir * 10.0f + side * (11.0f + flare);
+            Vec2 fin_tip_l = fin_l - dir * 10.0f - side * 3.0f;
+            Vec2 fin_tip_r = fin_r - dir * 10.0f + side * 3.0f;
+
+            // 1. DEPTH SHADOW (Offset hull for volume)
+            gfx.set_color({0, 0, 0, 150});
+            Vec2 sh = side * 2.0f;
+            gfx.draw_line(nose+sh, hood_l+sh); gfx.draw_line(nose+sh, hood_r+sh);
+            gfx.draw_line(hood_l+sh, cabin_l+sh); gfx.draw_line(hood_r+sh, cabin_r+sh);
+
+            // 2. MAIN HULL CONSTRUCTION
             gfx.set_color(player->color);
-            gfx.draw_line(nose, l_wing); gfx.draw_line(l_wing, r_wing); gfx.draw_line(r_wing, nose);
-            gfx.draw_bloom(player->pos, 20.0f, player->color);
+            gfx.draw_line(nose, hood_l); gfx.draw_line(nose, hood_r);
+            gfx.draw_line(hood_l, cabin_l); gfx.draw_line(hood_r, cabin_r);
+            gfx.draw_line(cabin_l, rear_l); gfx.draw_line(cabin_r, rear_r);
+            gfx.draw_line(rear_l, rear_r);
+            
+            // Structural Ribs (Adding complexity)
+            gfx.set_color(player->color, 0.4f);
+            gfx.draw_line(hood_l, hood_r);
+            gfx.draw_line(cabin_l, cabin_r);
+            gfx.draw_line(player->pos + dir * 8.0f, player->pos - dir * 4.0f);
+
+            // 3. REACTIVE FINS
+            gfx.set_color(player->color);
+            gfx.draw_line(cabin_l, fin_l); gfx.draw_line(fin_l, fin_tip_l);
+            gfx.draw_line(cabin_r, fin_r); gfx.draw_line(fin_r, fin_tip_r);
+
+            // 4. POWER-PLANT (Pulsing Reactor)
+            float pulse = 0.8f + 0.2f * std::sin(stability_timer * 18.0f);
+            gfx.draw_glowing_circle(player->pos - dir * 4.0f, 5.0f * pulse, Colors::WHITE);
+            gfx.draw_bloom(player->pos - dir * 4.0f, 12.0f * pulse, player->color);
+
+            // 5. ANTI-GRAVITY HOVER PADS (The "Floating" logic)
+            Vec2 pad_l = rear_l + side * 4.0f;
+            Vec2 pad_r = rear_r - side * 4.0f;
+            float hover_pulse = 0.7f + 0.3f * std::sin(stability_timer * 12.0f);
+            
+            // Ground Glow (Energy cushion)
+            gfx.draw_bloom(player->pos, 35.0f * hover_pulse, {player->color.r, player->color.g, player->color.b, 40});
+
+            // DISPLACEMENT RINGS (Hyperrealistic Hovering)
+            for (int i = 0; i < 3; ++i) {
+                float ring_scale = std::fmod((stability_timer * 2.0f) + (i * 0.33f), 1.0f);
+                float ring_alpha = 1.0f - ring_scale;
+                float ring_r = 5.0f + ring_scale * (15.0f + speed_factor * 20.0f);
+                
+                gfx.set_color(Colors::NEON_BLUE, ring_alpha * 0.6f);
+                gfx.draw_circle(pad_l, ring_r);
+                gfx.draw_circle(pad_r, ring_r);
+            }
+
+            // Pad Core Glow
+            float pad_intensity = 0.4f + speed_factor * 0.6f;
+            gfx.set_color(Colors::WHITE, pad_intensity);
+            gfx.draw_circle(pad_l, 4.0f);
+            gfx.draw_circle(pad_r, 4.0f);
+            gfx.draw_bloom(pad_l, 10.0f * pad_intensity, Colors::NEON_BLUE);
+            gfx.draw_bloom(pad_r, 10.0f * pad_intensity, Colors::NEON_BLUE);
+
             gfx.draw_text(std::format("INTEGRITY: {:.0f}", player->integrity), {20, 20}, 26, {255, 200, 50, 255});
             gfx.draw_text(std::format("HARMONY: {:.0f}/{:.0f}", player->harmony_xp, player->harmony_next), {20, 55}, 22, Colors::NEON_GREEN);
             gfx.draw_text(std::format("EVOLUTION: {}", player->level), {20, 85}, 22, Colors::WHITE);
