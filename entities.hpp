@@ -5,6 +5,7 @@
 #include <ranges>
 #include <memory>
 #include <expected>
+#include <set>
 
 enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, GLITCH_BOSS, HARMONY_RAY, HARMONY_ORB, PARTICLE };
 
@@ -24,30 +25,25 @@ public:
     }
 };
 
-class Particle : public GameObject {
-public:
-    float life = 1.0f;
-    float decay;
-    Particle(Vec2 p, Color c, float spd, float decay_rate) 
-        : GameObject(p, ObjType::PARTICLE), decay(decay_rate) {
-        color = c;
-        float a = rnd(0, std::numbers::pi_v<float>*2);
-        vel = Vec2(std::cos(a), std::sin(a)) * spd;
-        radius = rnd(2, 4);
-    }
-    void update(float dt) override {
-        pos = pos + vel * dt;
-        life -= decay * dt;
-        if(life <= 0) dead = true;
-        vel = vel * 0.95f;
-    }
+// Optimized Particle for the Chaos Pool
+struct ParticleData {
+    Vec2 pos, vel;
+    Color color;
+    float life = 0.0f;
+    float decay = 1.0f;
+    float radius = 2.0f;
+    bool active = false;
 };
 
 class HarmonyRay : public GameObject {
 public:
     float damage = 10.0f;
     float life = 0.5f; 
-    HarmonyRay(Vec2 p, Vec2 v, float dmg, Color c) : GameObject(p, ObjType::HARMONY_RAY) {
+    int pierce_left = 0;
+    std::set<uintptr_t> hits; // Track unique glitch IDs hit to prevent double-damage
+
+    HarmonyRay(Vec2 p, Vec2 v, float dmg, Color c, int pierce) 
+        : GameObject(p, ObjType::HARMONY_RAY), pierce_left(pierce) {
         vel = v;
         damage = dmg;
         color = c;
@@ -86,7 +82,10 @@ public:
     float harmony_xp = 0;
     float harmony_next = 50;
     
+    // Evolutions
     int ray_count = 1;
+    float ray_spread = 0.12f;
+    int ray_pierce = 0;
     float ray_speed = 1800.0f; 
     float harmony_power = 15.0f;
 
@@ -125,7 +124,7 @@ public:
         } else if (t == ObjType::GLITCH_BOSS) {
             max_stability = stability = 1000.0f * (1.0f + difficulty_mult * 0.5f);
             radius = 60.0f;
-            color = {255, 255, 50, 255}; // Bright yellow for boss
+            color = {255, 255, 50, 255}; 
         }
     }
 };
