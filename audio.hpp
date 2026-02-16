@@ -65,31 +65,22 @@ public:
         harmony_progress = std::clamp(progress_norm, 0.0f, 1.0f);
     }
 
-    // --- HYPERREAL DIVINE SFX ---
-
     void play_divine_ray() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
         float p = player_pan.load();
         float b40 = 40.0f;
-        
-        // 1. ENERGY CORE (Binaural Focus 528Hz)
-        play_sfx_internal(528.0f, 0.12f, 0.25f, false, 0.994f, 0.0f, 0.001f); // Left
-        play_sfx_internal(528.0f + b40, 0.12f, 0.25f, false, 0.994f, 1.0f, 0.001f); // Right
-        
-        // 2. PRISMATIC TRANSIENT (The "Perfect perfect" bite)
-        play_sfx_internal(1056.0f, 0.08f, 0.12f, false, 0.985f, p, 0.001f);
-        
-        // 3. SUB-QUANTUM THUMP (Physical weight)
-        play_sfx_internal(44.0f, 0.15f, 0.15f, false, 0.99f, p, 0.002f);
+        play_sfx_internal(528.0f, 0.20f, 0.20f, false, 0.994f, 0.0f, 0.001f);
+        play_sfx_internal(528.0f + b40, 0.20f, 0.20f, false, 0.994f, 1.0f, 0.001f);
+        play_sfx_internal(1056.0f, 0.12f, 0.10f, false, 0.985f, p, 0.001f);
     }
 
     void play_collect_harmony() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
         float p = player_pan.load();
-        play_sfx_internal(659.25f, 0.25f, 0.8f, false, 1.0f, p, 0.01f);
-        play_sfx_internal(55.0f, 0.35f, 0.5f, false, 1.0f, p, 0.05f); 
+        play_sfx_internal(659.25f, 0.35f, 0.8f, false, 1.0f, p, 0.01f);
+        play_sfx_internal(55.0f, 0.45f, 0.5f, false, 1.0f, p, 0.05f); 
     }
 
     void play_warp_jump() {
@@ -97,55 +88,51 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         float b40 = 40.0f;
         jump_duck_env = 1.0f;
-        play_sfx_internal(32.0f, 0.65f, 1.2f, false, 0.992f, 0.0f, 0.005f); 
-        play_sfx_internal(32.0f + b40, 0.65f, 1.2f, false, 0.992f, 1.0f, 0.005f);
-        play_sfx_internal(64.0f, 0.45f, 0.8f, false, 0.99f, 0.5f, 0.002f);
+        play_sfx_internal(32.0f, 0.80f, 1.5f, false, 0.992f, 0.0f, 0.005f); 
+        play_sfx_internal(32.0f + b40, 0.80f, 1.5f, false, 0.992f, 1.0f, 0.005f);
     }
 
     void play_restoration_sigh() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(27.5f, 0.55f, 1.5f, false, 1.0f, 0.5f, 0.1f);
-        play_sfx_internal(55.0f, 0.45f, 1.2f, false, 1.0f, 0.5f, 0.05f);
-        play_sfx_internal(528.0f, 0.15f, 1.2f, false, 1.0f, 0.5f, 0.05f);
+        play_sfx_internal(27.5f, 0.65f, 1.5f, false, 1.0f, 0.5f, 0.1f);
+        play_sfx_internal(528.0f, 0.25f, 1.5f, false, 1.0f, 0.5f, 0.05f);
     }
 
     void play_impact() { 
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(82.41f, 0.35f, 0.15f, false, 0.99f, 0.5f, 0.005f); 
-        play_sfx_internal(110.0f, 0.25f, 0.1f, false, 0.99f, 0.5f, 0.002f);
+        play_sfx_internal(82.41f, 0.45f, 0.15f, false, 0.99f, 0.5f, 0.005f); 
     }
 
     void play_evolve_ray_density() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<6; ++i) play_sfx_internal(528.0f * (1.0f + i * 0.25f), 0.08f, 0.6f, false, 1.001f, (float)i/5.0f, 0.02f);
+        for(int i=0; i<6; ++i) play_sfx_internal(528.0f * (1.0f + i * 0.5f), 0.10f, 0.6f, false, 1.001f, (float)i/5.0f, 0.02f);
     }
 
     void play_evolve_harmony_power() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(36.71f, 0.65f, 2.0f, false, 1.0f, 0.5f, 0.2f);
-        play_sfx_internal(74.0f, 0.45f, 1.5f, false, 1.0f, 0.5f, 0.1f);
+        play_sfx_internal(36.71f, 0.80f, 2.0f, false, 1.0f, 0.5f, 0.2f);
     }
 
     void play_evolve_resonance_rate() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<10; ++i) play_sfx_internal(800.0f + i * 200.0f, 0.06f, 0.3f, false, 0.999f, (float)i/9.0f, 0.01f);
+        for(int i=0; i<10; ++i) play_sfx_internal(800.0f + i * 400.0f, 0.05f, 0.3f, false, 0.999f, (float)i/9.0f, 0.01f);
     }
 
     void play_glitch_spawn() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(55.0f, 0.35f, 1.5f, false, 0.9998f, 0.5f, 0.01f);
+        play_sfx_internal(55.0f, 0.25f, 1.5f, false, 0.9998f, 0.5f, 0.01f);
     }
     
     void play_dissipate() { 
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(432.0f, 0.05f, 0.1f, false, 1.0f, 0.5f, 0.02f); 
+        play_sfx_internal(432.0f, 0.02f, 0.1f, false, 1.0f, 0.5f, 0.02f); 
     }
 
     void set_binaural(float carrier, float beat, float amp) {
@@ -198,27 +185,26 @@ private:
     Movement current_movement = GENESIS;
 
     float kick_phase_l = 0.0f, kick_phase_r = 0.0f, kick_env = 0.0f;
-    float snare_tone_l = 0.0f, snare_tone_r = 0.0f, snare_env = 0.0f;
+    float snare_tone_l = 0.0f, snare_tone_r = 0.0f, snare_pop_phase = 0.0f, snare_env = 0.0f;
     float hat_env = 0.0f, hat_phases[6] = {0};
-    float bass_phase_l = 0.0f, bass_phase_r = 0.0f, bass_amp = 0.0f, bass_freq = 108.0f;
+    float reese_phases_l[4] = {0}, reese_phases_r[4] = {0}, bass_amp = 0.0f, bass_freq = 108.0f;
     float lead_phase_l = 0.0f, lead_phase_r = 0.0f, lead_amp = 0.0f, lead_freq = 432.0f;
     float bin_phase_l = 0.0f, bin_phase_r = 0.0f;
     
     float sidechain_duck = 1.0f; 
     float jump_duck_env = 0.0f; 
-    float swoosh_phase_l = 0.0f;
-    float swoosh_phase_r = 0.0f;
-    float grounding_bed_phase = 0.0f;
+    float swoosh_phase_l = 0.0f, swoosh_phase_r = 0.0f;
+    float musical_sub_phase_l = 0.0f, musical_sub_phase_r = 0.0f;
 
     static constexpr int MAX_SFX = 96;
     Voice sfx_voices[MAX_SFX];
     std::mt19937 noise_gen{std::random_device{}()};
     std::uniform_real_distribution<float> noise_dist{-1.0f, 1.0f};
 
-    float divine_wave(float p, int harmonics = 4) {
-        float s = 0.0f;
-        for (int i = 1; i <= harmonics; ++i) s += std::sin(p * (float)i) / (float)i;
-        return s * 0.6f;
+    float get_saw(float& p, float f, float sr) {
+        p += (f * 2.0f * std::numbers::pi_v<float>) / sr;
+        if (p > std::numbers::pi_v<float>) p -= 2.0f * std::numbers::pi_v<float>;
+        return p / std::numbers::pi_v<float>;
     }
 
     static void AudioCallback(void* userdata, Uint8* stream, int len) {
@@ -266,79 +252,115 @@ private:
                 else { global_bar = 0; }
 
                 if (current_movement >= GENESIS) {
-                    if (global_step % 4 == 0) { kick_env = 1.0f; kick_phase_l = kick_phase_r = 0.0f; sidechain_duck = 0.6f; }
-                    if (global_step % 16 == 4 || global_step % 16 == 12) { snare_env = 1.0f; snare_tone_l = snare_tone_r = 0.0f; sidechain_duck = 0.8f; }
-                    if (global_step % 8 == 0) { bass_amp = 0.8f; bass_freq = current_carrier * 0.25f; }
-                    if (global_step % 4 == 0) {
-                        std::array<float, 7> scale = {1.0f, 1.125f, 1.25f, 1.333f, 1.5f, 1.666f, 1.875f};
-                        lead_freq = current_carrier * scale[global_step % 7];
-                        lead_amp = 0.4f;
+                    // INDUSTRIAL KICK (40Hz)
+                    bool k_hit = (global_step % 4 == 0);
+                    if (current_movement == THE_NEXUS && (global_step % 16 == 6 || global_step % 16 == 14)) k_hit = true;
+                    if (k_hit) { kick_env = 1.0f; kick_phase_l = kick_phase_r = 0.0f; sidechain_duck = 0.4f; }
+
+                    // VIGILANCE SNARE (Ghost notes for alertness)
+                    bool s_hit = (global_step % 16 == 4 || global_step % 16 == 12);
+                    bool ghost = (current_movement >= AWAKENING && (global_step % 16 == 7 || global_step % 16 == 15));
+                    if (s_hit || ghost) {
+                        snare_env = ghost ? 0.35f : 1.0f;
+                        snare_tone_l = snare_tone_r = snare_pop_phase = 0.0f;
+                        if (!ghost) sidechain_duck = 0.7f;
+                    }
+
+                    if (global_step % 2 == 1) hat_env = 0.45f;
+
+                    // HIVE REESE BASS (Focus foundation)
+                    bool b_hit = (global_step % 8 == 0 || (current_movement == THE_NEXUS && global_step % 8 == 3));
+                    if (b_hit) {
+                        bass_amp = 0.95f; 
+                        std::array<float, 4> progression = {1.0f, 0.75f, 1.25f, 0.9f};
+                        bass_freq = current_carrier * 0.125f * progression[(global_bar / 4) % 4];
+                    }
+
+                    // DIVINE LEAD (Perfect Fifths - No cartoon noodling)
+                    if (global_step % 8 == 0) {
+                        std::array<float, 3> hive = {1.0f, 1.5f, 2.0f};
+                        lead_freq = current_carrier * hive[(global_step/8) % 3];
+                        lead_amp = 0.45f;
                     }
                 }
             }
 
             sidechain_duck = std::lerp(sidechain_duck, 1.0f, 0.005f);
-            float master_duck = sidechain_duck * (1.0f - jump_duck_env * 0.7f);
+            float m_duck = sidechain_duck * (1.0f - jump_duck_env * 0.7f);
 
             float out_l = 0.0f, out_r = 0.0f;
-            float b40 = 40.0f;
-            float pan_l = std::cos(pan * (std::numbers::pi_v<float> * 0.5f));
-            float pan_r = std::sin(pan * (std::numbers::pi_v<float> * 0.5f));
+            float b_gamma = 40.0f; // GAMMA FOCUS
+            float b_beta = 20.0f;  // BETA ALERTNESS
+            float p_l = std::cos(pan * (std::numbers::pi_v<float> * 0.5f));
+            float p_r = std::sin(pan * (std::numbers::pi_v<float> * 0.5f));
 
             current_intensity.store(std::lerp(current_intensity.load(), kick_env * 0.5f + bass_amp * 0.5f, 0.001f));
 
-            // --- 1. SILENT SOVEREIGN ---
-            float swoosh_f = 432.0f * (1.0f + speed * 0.15f);
-            swoosh_phase_l += (swoosh_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            swoosh_phase_r += ((swoosh_f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            float swoosh_amp = 0.025f * speed * current_engine_vol * master_duck;
-            out_l += std::sin(swoosh_phase_l) * swoosh_amp * pan_l;
-            out_r += std::sin(swoosh_phase_r) * swoosh_amp * pan_r;
+            // --- 1. SILENT SOVEREIGN (VOID-STREAM BINAURAL) ---
+            float s_f = 432.0f * (1.0f + speed * 0.15f);
+            swoosh_phase_l += (s_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            swoosh_phase_r += ((s_f + b_beta) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            float s_amp = 0.08f * speed * current_engine_vol * m_duck;
+            out_l += std::sin(swoosh_phase_l) * s_amp * p_l;
+            out_r += std::sin(swoosh_phase_r) * s_amp * p_r;
 
-            grounding_bed_phase += (32.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            float ground = std::sin(grounding_bed_phase) * 0.035f * current_engine_vol * master_duck;
-            out_l += ground; out_r += ground;
+            // --- 2. THE HIVE SYMPHONY (BINAURAL ENTRAINMENT) ---
+            // A. PERSISTENT SUB-FLOOR (GAMMA 40HZ)
+            float sub_f = current_carrier * 0.125f; 
+            musical_sub_phase_l += (sub_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            musical_sub_phase_r += ((sub_f + b_gamma) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            out_l += std::sin(musical_sub_phase_l) * 0.35f * m_duck;
+            out_r += std::sin(musical_sub_phase_r) * 0.35f * m_duck;
 
-            // --- 2. MUSIC ---
-            auto apply_b = [&](float f, float amp, float& p_l, float& p_r, bool organ = false) {
-                float mf_l = f; float mf_r = f + b40;
-                float s_l = organ ? divine_wave(p_l, 3) : std::sin(p_l);
-                float s_r = organ ? divine_wave(p_r, 3) : std::sin(p_r);
-                out_l += s_l * amp; out_r += s_r * amp;
-                p_l += (mf_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                p_r += (mf_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            };
-
+            // B. DRUMS
             if (kick_env > 0.001f) {
-                float k_f = 45.0f + 250.0f * (kick_env * kick_env);
-                out_l += std::sin(kick_phase_l) * kick_env * 0.5f;
-                out_r += std::sin(kick_phase_r) * kick_env * 0.5f;
+                float k_f = 40.0f + 150.0f * (kick_env * kick_env);
+                out_l += std::sin(kick_phase_l) * kick_env * 0.85f;
+                out_r += std::sin(kick_phase_r) * kick_env * 0.85f;
                 kick_phase_l += (k_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                kick_phase_r += ((k_f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                kick_env *= 0.9993f;
+                kick_phase_r += ((k_f + b_gamma) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                kick_env *= 0.9994f;
             }
             if (snare_env > 0.001f) {
-                float s_l = (std::sin(snare_tone_l) * 0.4f + noise_dist(noise_gen) * 0.6f);
-                float s_r = (std::sin(snare_tone_r) * 0.4f + noise_dist(noise_gen) * 0.6f);
-                out_l += s_l * snare_env * 0.3f; out_r += s_r * snare_env * 0.3f;
-                snare_tone_l += (220.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                snare_tone_r += ((220.0f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-                snare_env *= 0.9991f;
+                float p_f = 180.0f + 600.0f * (snare_env * snare_env);
+                snare_pop_phase += (p_f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                float pop = std::sin(snare_pop_phase) * snare_env * 0.45f;
+                snare_tone_l += (180.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                snare_tone_r += ((180.0f + b_gamma) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                float rattle = noise_dist(noise_gen) * snare_env * 0.45f;
+                float s_sig_l = std::tanh((pop + std::sin(snare_tone_l) * 0.25f + rattle) * 1.6f);
+                float s_sig_r = std::tanh((pop + std::sin(snare_tone_r) * 0.25f + rattle) * 1.6f);
+                out_l += s_sig_l * 0.5f; out_r += s_sig_r * 0.5f;
+                snare_env *= 0.9988f; 
             }
             if (hat_env > 0.001f) {
-                float h = noise_dist(noise_gen) * hat_env * 0.06f;
+                float h = noise_dist(noise_gen) * hat_env * 0.08f;
                 out_l += h; out_r += h; hat_env *= 0.997f;
             }
-            if (bass_amp > 0.001f) { apply_b(bass_freq, bass_amp * 0.12f, bass_phase_l, bass_phase_r, true); bass_amp *= 0.99985f; }
-            if (lead_amp > 0.001f) { apply_b(lead_freq, lead_amp * 0.06f, lead_phase_l, lead_phase_r); lead_amp *= 0.99975f; }
 
-            // --- 3. BINAURAL FOCUS ---
-            out_l += std::sin(bin_phase_l) * current_amp * 0.15f * (1.0f - kick_env*0.5f);
-            out_r += std::sin(bin_phase_r) * current_amp * 0.15f * (1.0f - kick_env*0.5f);
-            bin_phase_l += (432.0f * 2.0f * std::numbers::pi_v<float>) / sample_rate;
-            bin_phase_r += ((432.0f + b40) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            // C. HIVE REESE (Detuned Sawtooths)
+            if (bass_amp > 0.001f) {
+                float b_l = 0, b_r = 0;
+                std::array<float, 4> detunes = {1.0f, 1.002f, 0.998f, 1.005f};
+                for(int j=0; j<4; ++j) {
+                    b_l += get_saw(reese_phases_l[j], bass_freq * detunes[j], sample_rate);
+                    b_r += get_saw(reese_phases_r[j], (bass_freq + b_gamma) * detunes[j], sample_rate);
+                }
+                out_l += std::tanh(b_l * 0.25f) * bass_amp * 0.35f * m_duck;
+                out_r += std::tanh(b_r * 0.25f) * bass_amp * 0.35f * m_duck;
+                bass_amp *= 0.99985f;
+            }
 
-            // --- 4. SFX ---
+            // D. DIVINE LEAD
+            if (lead_amp > 0.001f) {
+                lead_phase_l += (lead_freq * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                lead_phase_r += ((lead_freq + b_gamma) * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+                out_l += std::sin(lead_phase_l) * lead_amp * 0.12f;
+                out_r += std::sin(lead_phase_r) * lead_amp * 0.12f;
+                lead_amp *= 0.99975f;
+            }
+
+            // --- 3. SFX ---
             for (auto& vox : sfx_voices) {
                 if (vox.active) {
                     float s = vox.is_noise ? (noise_dist(noise_gen) * 0.4f) : std::sin(vox.phase);
