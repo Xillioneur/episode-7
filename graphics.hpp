@@ -10,6 +10,18 @@ public:
     SDL_Renderer* r;
     Vec2 cam_offset;
     TTF_Font* font = nullptr;
+    
+    // Optimization: Precomputed circle vertices
+    static constexpr int CIRCLE_SEGMENTS = 64;
+    std::vector<Vec2> unit_circle;
+
+    Graphics() {
+        unit_circle.reserve(CIRCLE_SEGMENTS);
+        for (int i = 0; i < CIRCLE_SEGMENTS; ++i) {
+            float theta = 2.0f * std::numbers::pi_v<float> * i / CIRCLE_SEGMENTS;
+            unit_circle.push_back(Vec2(std::cos(theta), std::sin(theta)));
+        }
+    }
 
     void set_color(Color c, float alpha_mod = 1.0f) {
         SDL_SetRenderDrawColor(r, c.r, c.g, c.b, static_cast<Uint8>(c.a * alpha_mod));
@@ -21,13 +33,20 @@ public:
 
     void draw_circle(Vec2 pos, float radius) {
         if (radius < 0.5f) return;
-        std::vector<SDL_FPoint> points;
-        int segments = 16 + static_cast<int>(radius * 0.5f);
-        for (int i = 0; i < segments; ++i) {
-            float theta = 2.0f * std::numbers::pi_v<float> * i / segments;
+        // Optimization: Use precomputed unit circle
+        static std::vector<SDL_FPoint> points;
+        points.clear();
+        
+        // Adaptive Level of Detail (LOD) based on radius
+        int step = 1;
+        if (radius < 5.0f) step = 8;       // 8 segments
+        else if (radius < 15.0f) step = 4; // 16 segments
+        else if (radius < 30.0f) step = 2; // 32 segments
+        
+        for (int i = 0; i < CIRCLE_SEGMENTS; i += step) {
             points.push_back({
-                pos.x - cam_offset.x + radius * std::cos(theta),
-                pos.y - cam_offset.y + radius * std::sin(theta)
+                pos.x - cam_offset.x + unit_circle[i].x * radius,
+                pos.y - cam_offset.y + unit_circle[i].y * radius
             });
         }
         points.push_back(points[0]); 
@@ -44,7 +63,8 @@ public:
     }
 
     void draw_bloom(Vec2 pos, float radius, Color c) {
-        for (int i = 0; i < 4; ++i) {
+        // Optimization: Reduce bloom layers for performance
+        for (int i = 0; i < 3; ++i) {
             float r = radius * (1.0f + i * 0.5f);
             float a = 0.2f / (i + 1);
             set_color(c, a);
@@ -54,15 +74,32 @@ public:
 
     void draw_wireframe_3d(Vec2 pos, const std::vector<Vec3>& vertices, const std::vector<std::pair<int, int>>& edges, float angle_x, float angle_y, float angle_z, float scale, Color c) {
         set_color(c);
-        std::vector<Vec2> projected;
+        // Optimization: Stack allocation for projected points to avoid heap churn
+        static std::vector<Vec2> projected;
+        projected.clear();
+        projected.reserve(vertices.size());
+        
         float fov = 400.0f;
         float view_dist = 300.0f;
 
+        // Precompute rotation matrices could be faster, but this is okay for low vertex counts
+        float sx = std::sin(angle_x), cx = std::cos(angle_x);
+        float sy = std::sin(angle_y), cy = std::cos(angle_y);
+        float sz = std::sin(angle_z), cz = std::cos(angle_z);
+
         for (const auto& v : vertices) {
-            Vec3 rot = v.rotate_x(angle_x).rotate_y(angle_y).rotate_z(angle_z) * scale;
-            float z = rot.z + view_dist;
+            // Manual rotation expansion to avoid function call overhead
+            float y1 = v.y * cx - v.z * sx;
+            float z1 = v.y * sx + v.z * cx;
+            float x2 = v.x * cy + z1 * sy;
+            float z2 = -v.x * sy + z1 * cy;
+            float x3 = x2 * cz - y1 * sz;
+            float y3 = x2 * sz + y1 * cz;
+
+            float z = z2 * scale + view_dist;
+            if (z < 1.0f) z = 1.0f; // Prevent divide by zero
             float factor = fov / z;
-            projected.push_back(Vec2(pos.x + rot.x * factor, pos.y + rot.y * factor));
+            projected.push_back(Vec2(pos.x + x3 * scale * factor, pos.y + y3 * scale * factor));
         }
 
         for (const auto& edge : edges) {
@@ -84,12 +121,47 @@ public:
         SDL_RenderDrawRect(r, &rect);
     }
 
-    void draw_cross(Vec2 pos, float size, Color c, float thickness = 2.0f) {
+    void draw_cross(Vec2 pos, float size, Color c, float thickness = 2.0f, bool glow = false) {
+        if (glow) {
+            for(int i=0; i<3; ++i) {
+                float s = size * (1.0f + i * 0.2f);
+                float a = 0.3f / (i + 1);
+                draw_filled_rect(pos.x - thickness*2, pos.y - s, thickness * 4, s * 2.5f, {c.r, c.g, c.b, (Uint8)(c.a * a)});
+                draw_filled_rect(pos.x - s, pos.y - s * 0.3f, s * 2, thickness * 4, {c.r, c.g, c.b, (Uint8)(c.a * a)});
+            }
+        }
         set_color(c);
-        // Vertical bar
         draw_filled_rect(pos.x - thickness, pos.y - size, thickness * 2, size * 2.5f, c);
-        // Horizontal bar
         draw_filled_rect(pos.x - size, pos.y - size * 0.3f, size * 2, thickness * 2, c);
+    }
+
+    void draw_vignette(int w, int h, Color c, float intensity) {
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+        float thickness = 45.0f; 
+        // Optimization: Reduced to 4 steps from 6
+        for(int i=0; i<4; ++i) {
+            float pct = i / 4.0f;
+            Uint8 a = static_cast<Uint8>(intensity * (1.0f - pct) * 20.0f); 
+            draw_filled_rect(0, 0, w, thickness * (1.0f-pct), {c.r, c.g, c.b, a}); 
+            draw_filled_rect(0, h - thickness * (1.0f-pct), w, thickness * (1.0f-pct), {c.r, c.g, c.b, a}); 
+            draw_filled_rect(0, 0, thickness * (1.0f-pct), h, {c.r, c.g, c.b, a}); 
+            draw_filled_rect(w - thickness * (1.0f-pct), 0, thickness * (1.0f-pct), h, {c.r, c.g, c.b, a}); 
+        }
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_ADD);
+    }
+
+    void draw_indicator(Vec2 pos, float angle, Color c) {
+        float size = 12.0f;
+        Vec2 fwd(std::cos(angle), std::sin(angle));
+        Vec2 side(-fwd.y, fwd.x);
+        Vec2 p1 = pos + fwd * size;
+        Vec2 p2 = pos - fwd * size * 0.5f + side * size * 0.5f;
+        Vec2 p3 = pos - fwd * size * 0.5f - side * size * 0.5f;
+        
+        set_color(c, 0.6f);
+        draw_line(p1, p2);
+        draw_line(p2, p3);
+        draw_line(p3, p1);
     }
     
     void draw_text(const std::string& text, Vec2 pos, float size, Color c) {

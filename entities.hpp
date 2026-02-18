@@ -11,16 +11,17 @@ enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, GLITCH_BOSS
 
 class GameObject {
 public:
-    Vec2 pos, vel;
+    Vec2 pos, prev_pos, vel;
     float radius = 10.0f;
     bool dead = false;
     ObjType type;
     Color color = Colors::WHITE;
     float angle = 0.0f;
     
-    GameObject(Vec2 p, ObjType t) : pos(p), type(t) {}
+    GameObject(Vec2 p, ObjType t) : pos(p), prev_pos(p), type(t) {}
     virtual ~GameObject() = default;
     virtual void update(float dt) {
+        prev_pos = pos;
         pos = pos + vel * dt;
     }
 };
@@ -72,6 +73,7 @@ public:
         radius = 2.0f;
     }
     void update(float dt) override {
+        prev_pos = pos;
         GameObject::update(dt);
         life -= dt;
         if(life <= 0) dead = true;
@@ -196,14 +198,14 @@ public:
         } else if (t == ObjType::GLITCH_DASH) {
             max_stability = stability = 20.0f * scale;
             radius = 10.0f;
-            color = Colors::VOID_PURPLE; 
+            color = Colors::PENITENTIAL_VIOLET; 
             // Diamond (Double Pyramid)
             vertices = { {0,-1.5,0}, {0,1.5,0}, {1,0,1}, {1,0,-1}, {-1,0,-1}, {-1,0,1} };
             edges = { {0,2}, {0,3}, {0,4}, {0,5}, {1,2}, {1,3}, {1,4}, {1,5}, {2,3}, {3,4}, {4,5}, {5,2} };
         } else if (t == ObjType::GLITCH_BOSS) {
             max_stability = stability = 1000.0f * (1.0f + difficulty_mult * 0.5f);
             radius = 60.0f;
-            color = Colors::VOID_PURPLE; 
+            color = Colors::RED; 
             // Nested Octahedron (Core + Shell)
             vertices = { 
                 {1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1}, // Outer

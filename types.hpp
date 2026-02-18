@@ -15,6 +15,17 @@ struct Vec2 {
     float mag() const { return std::hypot(x, y); }
     Vec2 norm() const { float m = mag(); return m > 0 ? *this / m : Vec2(); }
     float dist(const Vec2& o) const { return (*this - o).mag(); }
+    
+    // Point-to-Segment Distance for CCD
+    static float dist_to_segment(Vec2 p, Vec2 a, Vec2 b) {
+        Vec2 ab = b - a;
+        Vec2 ap = p - a;
+        float l2 = ab.x*ab.x + ab.y*ab.y;
+        if (l2 == 0.0) return p.dist(a);
+        float t = std::clamp((ap.x*ab.x + ap.y*ab.y) / l2, 0.0f, 1.0f);
+        Vec2 projection = a + ab * t;
+        return p.dist(projection);
+    }
 };
 
 struct Vec3 {
@@ -47,13 +58,16 @@ struct Color {
 namespace Colors {
     inline constexpr Color WHITE{255, 255, 255, 255};
     inline constexpr Color GOLD{255, 215, 0, 255};
-    inline constexpr Color DIVINE_WHITE{240, 245, 255, 255};
-    inline constexpr Color HOLY_GOLD{255, 230, 100, 255};
-    inline constexpr Color RADIANT_TEAL{0, 255, 200, 255};
-    inline constexpr Color VOID_PURPLE{80, 0, 120, 255};
-    inline constexpr Color SHADOW_DARK{40, 0, 60, 255};
-    inline constexpr Color RED{255, 50, 50, 255};
-    inline constexpr Color BG_DARK{5, 5, 20, 255};
+    inline constexpr Color DIVINE_WHITE{245, 250, 255, 255};
+    inline constexpr Color HOLY_GOLD{255, 225, 80, 255};
+    inline constexpr Color SACRED_GOLD{255, 200, 40, 255};
+    inline constexpr Color RADIANT_TEAL{40, 255, 220, 255};
+    inline constexpr Color LENTEN_PURPLE{110, 0, 150, 255};
+    inline constexpr Color PENITENTIAL_VIOLET{70, 0, 100, 255};
+    inline constexpr Color VOID_PURPLE{50, 5, 80, 255};
+    inline constexpr Color SHADOW_DARK{20, 0, 35, 255};
+    inline constexpr Color RED{230, 40, 40, 255};
+    inline constexpr Color BG_DARK{3, 3, 12, 255};
 }
 
 inline float rnd(float min, float max) {

@@ -19,7 +19,7 @@ if [ ! -f "$COMPILER" ]; then
 fi
 
 echo "Configuring with CMake using $COMPILER..."
-cmake .. -DCMAKE_CXX_COMPILER="$COMPILER"
+cmake .. -DCMAKE_CXX_COMPILER="$COMPILER" -DCMAKE_CXX_FLAGS="-O3 -march=native -ffast-math -flto"
 
 # Build
 echo "Compiling..."

@@ -123,20 +123,20 @@ public:
     void play_evolve_ray_density() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<6; ++i) play_sfx_internal(216.0f * (1.0f + i * 0.25f), 0.12f, 0.8f, false, 1.001f, (float)i/5.0f, 0.05f);
+        for(int i=0; i<3; ++i) play_sfx_internal(216.0f * (1.0f + i * 0.5f), 0.10f, 0.6f, false, 1.001f, (float)i/2.0f, 0.05f);
     }
 
     void play_evolve_harmony_power() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        play_sfx_internal(36.71f, 0.45f, 2.0f, false, 1.0f, 0.5f, 0.2f);
-        play_sfx_internal(73.42f, 0.35f, 1.5f, false, 1.0f, 0.5f, 0.1f);
+        play_sfx_internal(36.71f, 0.35f, 1.2f, false, 1.0f, 0.5f, 0.2f);
+        play_sfx_internal(73.42f, 0.25f, 1.0f, false, 1.0f, 0.5f, 0.1f);
     }
 
     void play_evolve_resonance_rate() {
         if (device == 0) return;
         std::lock_guard<std::mutex> lock(mtx);
-        for(int i=0; i<8; ++i) play_sfx_internal(108.0f / (1.0f + i * 0.1f), 0.15f, 0.5f, false, 0.999f, (float)i/7.0f, 0.02f);
+        for(int i=0; i<4; ++i) play_sfx_internal(108.0f / (1.0f + i * 0.2f), 0.12f, 0.4f, false, 0.999f, (float)i/3.0f, 0.02f);
     }
 
     void play_glitch_spawn() {
@@ -163,6 +163,18 @@ public:
         target_carrier = carrier;
         target_beat = beat;
         target_amp = amp;
+    }
+
+    void play_divine_ascent() {
+        if (device == 0) return;
+        std::lock_guard<std::mutex> lock(mtx);
+        // Clean harmonic series (1, 2, 3, 4 ratio) for a pure chime
+        float harmonic_ratios[] = {1.0f, 2.0f, 3.0f, 4.0f};
+        for(int i=0; i<4; ++i) {
+            float f = current_carrier * harmonic_ratios[i];
+            // f_mod = 1.0f (no slide), attack = 0.05s, decay = longer for resonance
+            play_sfx_internal(f, 0.06f, 2.0f, false, 1.0f, 0.5f, 0.05f);
+        }
     }
 
     struct MusicState { bool is_drop; float intensity; int movement; };
@@ -215,7 +227,7 @@ private:
     float lead_phase_l = 0.0f, lead_phase_r = 0.0f, lead_amp = 0.0f, lead_freq = 432.0f;
     float bin_phase_l = 0.0f, bin_phase_r = 0.0f;
     
-    float drone_phases_l[4] = {0}, drone_phases_r[4] = {0}; // Replacing Organ with Drone
+    float drone_phases_l[8] = {0}, drone_phases_r[8] = {0}; // Replacing Organ with Drone
 
     float swoosh_phase_l = 0.0f, swoosh_phase_r = 0.0f;
     float reactor_phases_l[4] = {0}, reactor_phases_r[4] = {0};
@@ -358,13 +370,15 @@ private:
             
             // A. ETHEREAL DRONE (Replacing Organ)
             float drone_f = current_carrier * 0.25f;
-            std::array<float, 4> drone_ratios = {1.0f, 1.5f, 2.0f, 3.0f};
+            std::array<float, 8> drone_ratios = {1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 8.0f};
             float drone_amp = 0.08f + current_intensity.load() * 0.05f;
-            for(int j=0; j<4; ++j) {
+            float lfo = 0.5f + 0.5f * std::sin(global_step * 0.05f); // Slow LFO for filter movement
+            for(int j=0; j<8; ++j) {
                 float f_l = drone_f * drone_ratios[j];
                 float f_r = f_l + b_gamma;
-                music_l += std::sin(drone_phases_l[j]) * drone_amp * (0.25f/(j+1));
-                music_r += std::sin(drone_phases_r[j]) * drone_amp * (0.25f/(j+1));
+                float harmonic_amp = drone_amp * (0.4f / (j + 1)) * (j < 4 ? 1.0f : lfo);
+                music_l += std::sin(drone_phases_l[j]) * harmonic_amp;
+                music_r += std::sin(drone_phases_r[j]) * harmonic_amp;
                 drone_phases_l[j] += (f_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 drone_phases_r[j] += (f_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
             }
@@ -434,6 +448,10 @@ private:
             float peak = std::max(std::abs(mix_l), std::abs(mix_r));
             float target_gain = (peak > 0.90f) ? (0.90f / peak) : 1.0f;
             master_gain = std::lerp(master_gain, target_gain, (target_gain < master_gain) ? 0.05f : 0.0001f);
+
+            // NAN/INF SAFETY CHECK - CRITICAL
+            if (std::isnan(mix_l) || std::isinf(mix_l)) { mix_l = 0.0f; dc_l = 0.0f; }
+            if (std::isnan(mix_r) || std::isinf(mix_r)) { mix_r = 0.0f; dc_r = 0.0f; }
 
             buffer[i] = std::clamp(soft_limit(mix_l * master_gain * 1.3f), -0.99f, 0.99f);
             buffer[i + 1] = std::clamp(soft_limit(mix_r * master_gain * 1.3f), -0.99f, 0.99f);
