@@ -58,12 +58,12 @@ struct Color {
 namespace Colors {
     inline constexpr Color WHITE{255, 255, 255, 255};
     inline constexpr Color GOLD{255, 215, 0, 255};
-    inline constexpr Color DIVINE_WHITE{245, 250, 255, 255};
-    inline constexpr Color HOLY_GOLD{255, 225, 80, 255};
-    inline constexpr Color SACRED_GOLD{255, 200, 40, 255};
+    inline constexpr Color NEXUS_WHITE{245, 250, 255, 255};
+    inline constexpr Color HARMONY_GOLD{255, 225, 80, 255};
+    inline constexpr Color RESONANCE_GOLD{255, 200, 40, 255};
     inline constexpr Color RADIANT_TEAL{40, 255, 220, 255};
-    inline constexpr Color LENTEN_PURPLE{110, 0, 150, 255};
-    inline constexpr Color PENITENTIAL_VIOLET{70, 0, 100, 255};
+    inline constexpr Color NEXUS_PURPLE{110, 0, 150, 255};
+    inline constexpr Color VOID_VIOLET{70, 0, 100, 255};
     inline constexpr Color VOID_PURPLE{50, 5, 80, 255};
     inline constexpr Color SHADOW_DARK{20, 0, 35, 255};
     inline constexpr Color RED{230, 40, 40, 255};

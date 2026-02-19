@@ -163,6 +163,26 @@ public:
         draw_line(p2, p3);
         draw_line(p3, p1);
     }
+
+    void draw_scanlines(int w, int h, float time) {
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 40);
+        int spacing = 4;
+        int offset = (int)(time * 20.0f) % spacing;
+        for (int y = offset; y < h; y += spacing) {
+            SDL_Rect line = { 0, y, w, 1 };
+            SDL_RenderFillRect(r, &line);
+        }
+        SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_ADD);
+    }
+
+    void draw_chromatic_aberration(float intensity) {
+        if (intensity <= 0) return;
+        // This is a simple visual trick: draw a slightly shifted cyan/magenta copy of the screen
+        // In a real post-processing shader this would be better, but we can simulate it with bloom
+        // by drawing extra pulses or lines. For this prototype, we'll implement it as a camera shake
+        // of color layers if we had a backbuffer. Since we don't, we'll provide a hook for Engine.
+    }
     
     void draw_text(const std::string& text, Vec2 pos, float size, Color c) {
         if (!font) return;

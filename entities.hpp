@@ -7,7 +7,7 @@
 #include <expected>
 #include <set>
 
-enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, GLITCH_BOSS, GLITCH_PROJECTILE, GLITCH_SPLITTER, HARMONY_RAY, HARMONY_ORB, FRUIT_OF_SPIRIT, PARTICLE };
+enum class ObjType { PLAYER, GLITCH_BASIC, GLITCH_DASH, GLITCH_TANK, GLITCH_BOSS, GLITCH_PROJECTILE, GLITCH_SPLITTER, HARMONY_RAY, HARMONY_ORB, FRUIT_OF_SPIRIT, PARTICLE, HARMONY_PULSE };
 
 class GameObject {
 public:
@@ -86,11 +86,25 @@ public:
     HarmonyOrb(Vec2 p, float val) : GameObject(p, ObjType::HARMONY_ORB), value(val) {
         vel = Vec2(rnd(-30, 30), rnd(-30, 30));
         radius = 6.0f;
-        color = Colors::HOLY_GOLD;
+        color = Colors::HARMONY_GOLD;
     }
     void update(float dt) override {
         pos = pos + vel * dt;
         vel = vel * 0.92f;
+    }
+};
+
+class HarmonyPulse : public GameObject {
+public:
+    float max_r;
+    float current_r = 0.0f;
+    float speed = 800.0f;
+    HarmonyPulse(Vec2 p, float r, Color c) : GameObject(p, ObjType::HARMONY_PULSE), max_r(r) {
+        color = c;
+    }
+    void update(float dt) override {
+        current_r += speed * dt;
+        if (current_r >= max_r) dead = true;
     }
 };
 
@@ -141,7 +155,7 @@ public:
 
     Player(Vec2 p) : GameObject(p, ObjType::PLAYER) {
         radius = 12.0f;
-        color = Colors::DIVINE_WHITE;
+        color = Colors::NEXUS_WHITE;
     }
 
     void update(float dt) override {
@@ -198,7 +212,7 @@ public:
         } else if (t == ObjType::GLITCH_DASH) {
             max_stability = stability = 20.0f * scale;
             radius = 10.0f;
-            color = Colors::PENITENTIAL_VIOLET; 
+            color = Colors::VOID_VIOLET; 
             // Diamond (Double Pyramid)
             vertices = { {0,-1.5,0}, {0,1.5,0}, {1,0,1}, {1,0,-1}, {-1,0,-1}, {-1,0,1} };
             edges = { {0,2}, {0,3}, {0,4}, {0,5}, {1,2}, {1,3}, {1,4}, {1,5}, {2,3}, {3,4}, {4,5}, {5,2} };

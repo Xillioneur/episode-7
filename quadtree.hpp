@@ -31,6 +31,10 @@ public:
     QuadTree(Rect boundary, int level = 0) : boundary(boundary), level(level) {}
 
     void subdivide() {
+        if (children[0]) {
+            divided = true;
+            return;
+        }
         float x = boundary.x;
         float y = boundary.y;
         float w = boundary.w / 2.0f;
@@ -56,7 +60,7 @@ public:
         for (auto& child : children) {
             if (child->insert(obj)) return true;
         }
-        return false;
+        return false; // Should not happen for points within boundary
     }
 
     void query(Rect range, std::vector<GameObject*>& found) const {
@@ -79,7 +83,8 @@ public:
         objects.clear();
         if (divided) {
             for (auto& child : children) child->clear();
-            divided = false;
+            // Optimization: Do NOT destroy children or set divided=false.
+            // We keep the structure to avoid reallocation.
         }
     }
 };

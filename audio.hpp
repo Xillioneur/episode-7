@@ -337,6 +337,11 @@ private:
             float p_l = std::cos(pan * (std::numbers::pi_v<float> * 0.5f));
             float p_r = std::sin(pan * (std::numbers::pi_v<float> * 0.5f));
 
+            // Speaker-Ready Binaural Beats: Volume LFO tied to the beat frequency
+            static float beat_lfo_phase = 0.0f;
+            beat_lfo_phase += (b_gamma * 2.0f * std::numbers::pi_v<float>) / sample_rate;
+            float speaker_ready_lfo = 0.85f + 0.15f * std::sin(beat_lfo_phase);
+
             current_intensity.store(std::lerp(current_intensity.load(), kick_env * 0.5f + bass_amp * 0.5f, 0.001f));
 
             // --- BUS 1: SHIP ---
@@ -359,8 +364,9 @@ private:
                 float f_r = f_l + b_gamma;
                 float w_l = std::sin(reactor_phases_l[j]);
                 float w_r = std::sin(reactor_phases_r[j]);
-                ship_l += w_l * growl_amps[j] * current_engine_vol * mechanical_pulse * p_l;
-                ship_r += w_r * growl_amps[j] * current_engine_vol * mechanical_pulse * p_r;
+                // Apply speaker_ready_lfo to the reactor growls
+                ship_l += w_l * growl_amps[j] * current_engine_vol * mechanical_pulse * p_l * speaker_ready_lfo;
+                ship_r += w_r * growl_amps[j] * current_engine_vol * mechanical_pulse * p_r * speaker_ready_lfo;
                 reactor_phases_l[j] += (f_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 reactor_phases_r[j] += (f_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
             }
@@ -377,8 +383,9 @@ private:
                 float f_l = drone_f * drone_ratios[j];
                 float f_r = f_l + b_gamma;
                 float harmonic_amp = drone_amp * (0.4f / (j + 1)) * (j < 4 ? 1.0f : lfo);
-                music_l += std::sin(drone_phases_l[j]) * harmonic_amp;
-                music_r += std::sin(drone_phases_r[j]) * harmonic_amp;
+                // Apply speaker_ready_lfo to the ethereal drones
+                music_l += std::sin(drone_phases_l[j]) * harmonic_amp * speaker_ready_lfo;
+                music_r += std::sin(drone_phases_r[j]) * harmonic_amp * speaker_ready_lfo;
                 drone_phases_l[j] += (f_l * 2.0f * std::numbers::pi_v<float>) / sample_rate;
                 drone_phases_r[j] += (f_r * 2.0f * std::numbers::pi_v<float>) / sample_rate;
             }
