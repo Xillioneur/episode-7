@@ -112,6 +112,9 @@ class Engine {
     int selected_reply = 0;
     float dialog_timer = 0.0f;
 
+    bool evolution_pending = false;
+    float evolution_timer = 0.0f;
+
     // SACRED COVENANT SYSTEM (DOUAY-RHEIMS - LENT FOCUS)
     std::vector<std::string> scriptures = {
         "NOT IN BREAD ALONE DOTH MAN LIVE - MATTHEW 4:4",
@@ -202,6 +205,37 @@ class Engine {
         gfx.draw_text_centered("VIGIL SUSPENDED", {static_cast<float>(WINDOW_W/2), static_cast<float>(WINDOW_H/2 - 50)}, 60, Colors::RESONANCE_GOLD);
         float pulse = 0.5f + 0.5f * std::sin(stability_timer * 4.0f);
         gfx.draw_text_centered("PRESS ESC TO RESUME PRAYER", {static_cast<float>(WINDOW_W/2), static_cast<float>(WINDOW_H/2 + 50)}, 24, {255, 255, 255, (Uint8)(255 * pulse)});
+    }
+
+    void render_evolution_overlay() {
+        if (!evolution_pending) return;
+        
+        float entrance = std::min(1.0f, (10.0f - evolution_timer) * 4.0f);
+        float exit = std::min(1.0f, evolution_timer * 2.0f);
+        float scale = entrance * exit;
+        if (scale <= 0) return;
+
+        float card_w = 220, card_h = 140;
+        float spacing = 20;
+        float total_w = card_w * 3 + spacing * 2;
+        float start_x = WINDOW_W / 2.0f - total_w / 2.0f;
+        float base_y = WINDOW_H - 250.0f;
+
+        const char* titles[] = {"RAY DENSITY", "HARMONY POWER", "RESONANCE RATE"};
+        const char* desc[] = {"+1 Beam of Grace", "x1.45 Spiritual Power", "+1 Pierce, -10% CD"};
+
+        for (int i = 0; i < 3; ++i) {
+            float cx = start_x + i * (card_w + spacing);
+            float cy = base_y + (1.0f - scale) * 100.0f; // Slide up animation
+
+            gfx.draw_filled_rect(cx, cy, card_w, card_h, {10, 10, 30, (Uint8)(220 * scale)});
+            gfx.draw_rect(cx, cy, card_w, card_h, {Colors::RESONANCE_GOLD.r, Colors::RESONANCE_GOLD.g, Colors::RESONANCE_GOLD.b, (Uint8)(255 * scale)});
+            
+            gfx.draw_text_centered(std::format("[{}]", i + 1), {cx + card_w/2, cy + 25}, 20, {Colors::HARMONY_GOLD.r, Colors::HARMONY_GOLD.g, Colors::HARMONY_GOLD.b, (Uint8)(255 * scale)});
+            gfx.draw_text_centered(titles[i], {cx + card_w/2, cy + 60}, 18, {255, 255, 255, (Uint8)(255 * scale)});
+            gfx.draw_text_centered(desc[i], {cx + card_w/2, cy + 100}, 14, {Colors::NEXUS_WHITE.r, Colors::NEXUS_WHITE.g, Colors::NEXUS_WHITE.b, (Uint8)(255 * scale)});
+        }
+        gfx.draw_text_centered("CHOOSE YOUR ASCENSION", {WINDOW_W/2.0f, base_y - 30.0f}, 18, {Colors::HARMONY_GOLD.r, Colors::HARMONY_GOLD.g, Colors::HARMONY_GOLD.b, (Uint8)(255 * scale)});
     }
 
     void render_messenger() {
@@ -336,6 +370,11 @@ public:
         if (current_dialog_idx != -1) {
             dialog_timer -= dt;
             if (dialog_timer <= 0) current_dialog_idx = -1;
+        }
+
+        if (evolution_pending) {
+            evolution_timer -= dt;
+            if (evolution_timer <= 0) evolution_pending = false;
         }
         if (screenshake > 0) screenshake -= dt * 30.0f; else screenshake = 0;
         bg_flash = std::max(0.0f, bg_flash - dt * 0.5f);
@@ -605,7 +644,20 @@ public:
             if (orb_ptr->type == ObjType::HARMONY_ORB) {
                 float dist = orb_ptr->pos.dist(player->pos);
                 if (dist < player->siphon_range) { float pull_force = 1500.0f * (1.0f - dist / player->siphon_range); orb_ptr->vel = orb_ptr->vel + (player->pos - orb_ptr->pos).norm() * pull_force * dt; siphoning_count++; gfx.set_color(Colors::HARMONY_GOLD, 0.3f); gfx.draw_line(orb_ptr->pos, player->pos); }
-                if (dist < player->radius + 15.0f) { orb_ptr->ascended = true; player->harmony_xp += static_cast<HarmonyOrb*>(orb_ptr)->value; if (audio) audio->play_collect_harmony(); if (player->harmony_xp >= player->harmony_next) { player->harmony_xp = 0; player->harmony_next *= 1.25f; player->level++; state = State::EVOLUTION; if (audio) audio->play_divine_ascent(); trigger_divine_voice("ASCEND IN VIRTUE."); } }
+                if (dist < player->radius + 15.0f) { 
+                    orb_ptr->ascended = true; 
+                    player->harmony_xp += static_cast<HarmonyOrb*>(orb_ptr)->value; 
+                    if (audio) audio->play_collect_harmony(); 
+                    if (player->harmony_xp >= player->harmony_next) { 
+                        player->harmony_xp = 0; 
+                        player->harmony_next *= 1.25f; 
+                        player->level++; 
+                        evolution_pending = true;
+                        evolution_timer = 10.0f; // Options stay for 10 seconds or until chosen
+                        if (audio) audio->play_divine_ascent(); 
+                        trigger_divine_voice("ASCEND IN VIRTUE."); 
+                    } 
+                }
             }
         }
         if (siphoning_count > 0) player->integrity = std::min(player->max_integrity, player->integrity + siphoning_count * 0.5f * dt);
@@ -800,52 +852,6 @@ public:
             gfx.draw_text_centered("FAST, PRAY, AND RESTORE THE LIGHT", {static_cast<float>(WINDOW_W/2), 400}, 24, Colors::NEXUS_WHITE);
             float pulse = 0.5f + 0.5f * std::sin(stability_timer * 3.0f);
             gfx.draw_text_centered("PRESS SPACE TO BEGIN YOUR VIGIL", {static_cast<float>(WINDOW_W/2), 550}, 24, {Colors::HARMONY_GOLD.r, Colors::HARMONY_GOLD.g, Colors::HARMONY_GOLD.b, (Uint8)(255 * pulse)});
-        } else if (state == State::EVOLUTION) {
-            gfx.draw_filled_rect(0, 0, WINDOW_W, WINDOW_H, {5, 5, 15, 200});
-            gfx.draw_vignette(WINDOW_W, WINDOW_H, Colors::NEXUS_PURPLE, 0.6f);
-            
-            gfx.draw_text_centered("ASCEND IN GRACE", {static_cast<float>(WINDOW_W/2), 100}, 80, Colors::RESONANCE_GOLD);
-            gfx.draw_text_centered(scriptures[current_scripture_idx], {static_cast<float>(WINDOW_W/2), 180}, 20, Colors::NEXUS_WHITE);
-            
-            const char* titles[] = {"RADIANCE OF FAITH", "SWORD OF THE SPIRIT", "UNCEASING PRAYER"};
-            const char* desc1[] = {"MULTIPLY THE LIGHT", "POWER OF THE WORD", "STEADFAST VIGIL"};
-            const char* desc2[] = {"+1 Beam of Grace", "x1.45 Spiritual Power", "+1 Pierce, -10% CD"};
-            
-            for(int i=0; i<3; ++i) {
-                float cx = WINDOW_W/4.0f * (i+1);
-                float cy = 450.0f;
-                bool hover = false;
-                int mx, my; SDL_GetMouseState(&mx, &my);
-                if (std::abs(mx - cx) < 130 && std::abs(my - cy) < 150) hover = true;
-                
-                float scale = hover ? 1.1f : 1.0f;
-                Color box_c = hover ? Colors::RESONANCE_GOLD : Color(40, 20, 60, 255);
-                
-                gfx.draw_filled_rect(cx - 130 * scale, cy - 150 * scale, 260 * scale, 300 * scale, {20, 10, 30, 240});
-                gfx.draw_rect(cx - 130 * scale, cy - 150 * scale, 260 * scale, 300 * scale, box_c);
-                if (hover) gfx.draw_bloom({cx, cy}, 150.0f, Colors::RESONANCE_GOLD);
-                
-                // Sacred Sigil (Procedural - Cross/Fish/Dove abstract)
-                float t = stability_timer * 1.5f;
-                gfx.set_color(Colors::RESONANCE_GOLD, hover ? 1.0f : 0.6f);
-                if (i == 0) { // Ray/Star
-                    for(int k=0; k<8; ++k) {
-                        float a = k * (std::numbers::pi_v<float>/4.0f) + t;
-                        gfx.draw_line({cx, cy - 60}, {cx + std::cos(a)*50*scale, cy - 60 + std::sin(a)*50*scale});
-                    }
-                } else if (i == 1) { // Sword/Cross
-                    gfx.draw_filled_rect(cx - 5*scale, cy - 100*scale, 10*scale, 80*scale, Colors::RESONANCE_GOLD);
-                    gfx.draw_filled_rect(cx - 25*scale, cy - 80*scale, 50*scale, 10*scale, Colors::RESONANCE_GOLD);
-                } else { // Circle/Eternity
-                     gfx.draw_circle({cx, cy - 60}, 40 * scale);
-                     gfx.draw_circle({cx, cy - 60}, 35 * scale + std::sin(t*5.0f)*5.0f);
-                }
-
-                gfx.draw_text_centered(std::format("[{}]", i+1), {cx, cy - 120}, 32, Colors::HARMONY_GOLD);
-                gfx.draw_text_centered(titles[i], {cx, cy + 20}, 24, Colors::WHITE);
-                gfx.draw_text_centered(desc1[i], {cx, cy + 60}, 18, Colors::HARMONY_GOLD);
-                gfx.draw_text_centered(desc2[i], {cx, cy + 90}, 16, Colors::NEXUS_WHITE);
-            }
         } else if (state == State::GAME_OVER) {
             gfx.draw_text_centered("SPIRITUAL DESOLATION", {static_cast<float>(WINDOW_W/2), 300}, 75, Colors::VOID_PURPLE);
             gfx.draw_text_centered("THE SHADOWS HAVE GROWN LONG", {static_cast<float>(WINDOW_W/2), 380}, 28, Colors::SHADOW_DARK);
@@ -858,6 +864,7 @@ public:
         if (state == State::PAUSED) render_pause_menu();
         if (messenger_open) render_messenger();
         if (current_dialog_idx != -1 && !messenger_open) render_player_bubble();
+        if (evolution_pending) render_evolution_overlay();
         
         // Post-processing: Scanlines
         gfx.draw_scanlines(WINDOW_W, WINDOW_H, stability_timer);
@@ -913,10 +920,17 @@ public:
                     }
                     if (state == State::MENU && ev.key.keysym.sym == SDLK_SPACE) state = State::PLAYING;
                     if ((state == State::GAME_OVER || state == State::VICTORY) && ev.key.keysym.sym == SDLK_SPACE) { reset_game(); state = State::PLAYING; }
-                    if (state == State::EVOLUTION) {
-                        if (ev.key.keysym.sym == SDLK_1) { player->ray_count++; player->ray_spread += 0.05f; if(audio) audio->play_evolve_ray_density(); state = State::PLAYING; trigger_divine_voice("BE FRUITFUL AND MULTIPLY."); }
-                        if (ev.key.keysym.sym == SDLK_2) { player->harmony_power *= 1.45f; if(audio) audio->play_evolve_harmony_power(); state = State::PLAYING; trigger_divine_voice("THY WORD IS A SWORD OF SPIRIT."); }
-                        if (ev.key.keysym.sym == SDLK_3) { player->ray_pierce++; player->harmony_rate *= 0.9f; if(audio) audio->play_evolve_resonance_rate(); state = State::PLAYING; trigger_divine_voice("STAND FAST IN THE FAITH."); }
+                    
+                    if (evolution_pending) {
+                        bool chosen = false;
+                        if (ev.key.keysym.sym == SDLK_1) { player->ray_count++; player->ray_spread += 0.05f; if(audio) audio->play_evolve_ray_density(); chosen = true; trigger_divine_voice("BE FRUITFUL AND MULTIPLY."); }
+                        if (ev.key.keysym.sym == SDLK_2) { player->harmony_power *= 1.45f; if(audio) audio->play_evolve_harmony_power(); chosen = true; trigger_divine_voice("THY WORD IS A SWORD OF SPIRIT."); }
+                        if (ev.key.keysym.sym == SDLK_3) { player->ray_pierce++; player->harmony_rate *= 0.9f; if(audio) audio->play_evolve_resonance_rate(); chosen = true; trigger_divine_voice("STAND FAST IN THE FAITH."); }
+                        
+                        if (chosen) {
+                            evolution_pending = false;
+                            spawn_text_particle(player->pos, "ASCENDED", Colors::RESONANCE_GOLD);
+                        }
                     }
                 }
             }
