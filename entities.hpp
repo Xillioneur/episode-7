@@ -13,7 +13,7 @@ class GameObject {
 public:
     Vec2 pos, prev_pos, vel;
     float radius = 10.0f;
-    bool dead = false;
+    bool ascended = false;
     ObjType type;
     Color color = Colors::WHITE;
     float angle = 0.0f;
@@ -31,13 +31,13 @@ public:
     float life = 3.0f;
     GlitchProjectile(Vec2 p, Vec2 v) : GameObject(p, ObjType::GLITCH_PROJECTILE) {
         vel = v;
-        radius = 6.0f;
-        color = {255, 50, 50, 255}; // RED
+        radius = 5.0f;
+        color = Colors::RED; 
     }
     void update(float dt) override {
         GameObject::update(dt);
         life -= dt;
-        if(life <= 0) dead = true;
+        if(life <= 0) ascended = true;
     }
 };
 
@@ -76,19 +76,22 @@ public:
         prev_pos = pos;
         GameObject::update(dt);
         life -= dt;
-        if(life <= 0) dead = true;
+        if(life <= 0) ascended = true;
     }
 };
 
 class HarmonyOrb : public GameObject {
 public:
     float value;
+    float pulse_timer = 0.0f;
     HarmonyOrb(Vec2 p, float val) : GameObject(p, ObjType::HARMONY_ORB), value(val) {
         vel = Vec2(rnd(-30, 30), rnd(-30, 30));
-        radius = 6.0f;
+        radius = 8.0f;
         color = Colors::HARMONY_GOLD;
+        pulse_timer = rnd(0, 6.28f);
     }
     void update(float dt) override {
+        pulse_timer += dt * 5.0f;
         pos = pos + vel * dt;
         vel = vel * 0.92f;
     }
@@ -104,7 +107,7 @@ public:
     }
     void update(float dt) override {
         current_r += speed * dt;
-        if (current_r >= max_r) dead = true;
+        if (current_r >= max_r) ascended = true;
     }
 };
 
@@ -120,7 +123,7 @@ public:
     void update(float dt) override {
         pos = pos + vel * dt;
         life -= dt;
-        if(life <= 0) dead = true;
+        if(life <= 0) ascended = true;
     }
 };
 

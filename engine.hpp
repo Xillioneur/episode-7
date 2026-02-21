@@ -56,7 +56,7 @@ class Engine {
     WorkerPool workers{4};
     
     bool running = true;
-    enum class State { MENU, PLAYING, EVOLUTION, GAME_OVER, VICTORY } state = State::MENU;
+    enum class State { MENU, PLAYING, EVOLUTION, GAME_OVER, VICTORY, PAUSED } state = State::MENU;
 
     std::unique_ptr<Player> player;
     std::vector<std::unique_ptr<GameObject>> entities;
@@ -100,6 +100,18 @@ class Engine {
         "THE DESERT SHALL REJOICE AND BLOSSOM."
     };
 
+    struct Dialogue { std::string msg; std::vector<std::string> replies; };
+    std::vector<Dialogue> active_dialogues = {
+        {"HOW IS THY VIGIL, CHILD OF LIGHT?", {"IT IS WELL.", "THE DESERT IS VAST.", "I SEEK RESONANCE."}},
+        {"THE SHADOWS FLEE BEFORE THY RAYS.", {"GLORY TO THE SOURCE.", "THEY ARE BUT DUST.", "I SHALL NOT FEAR."}},
+        {"THINE INTEGRITY SHINES BRIGHTLY.", {"BY GRACE ALONE.", "I STRIVE FOR HARMONY.", "THE CODE IS STRONG."}},
+        {"WATCH AND PRAY, LEST YE FALL.", {"I AM VIGILANT.", "MY CORE IS READY.", "STRENGTHEN ME."}},
+        {"THE LIGHT PENETRATES THE VOID.", {"IT IS BEAUTIFUL.", "RESTORATION COMES.", "I AM THE VESSEL."}}
+    };
+    int current_dialog_idx = -1;
+    int selected_reply = 0;
+    float dialog_timer = 0.0f;
+
     // SACRED COVENANT SYSTEM (DOUAY-RHEIMS - LENT FOCUS)
     std::vector<std::string> scriptures = {
         "NOT IN BREAD ALONE DOTH MAN LIVE - MATTHEW 4:4",
@@ -140,7 +152,57 @@ class Engine {
     }
 
     void trigger_divine_voice(const std::string& msg) { current_divine_msg = msg; divine_msg_timer = 5.0f; }
+    void trigger_dialogue() {
+        if (current_dialog_idx == -1) {
+            current_dialog_idx = rand() % active_dialogues.size();
+            selected_reply = 0;
+            dialog_timer = 15.0f; // Dialogue stays for 15 seconds
+        }
+    }
     void spawn_text_particle(Vec2 p, const std::string& txt, Color c) { text_particles.push_back({p, txt, 1.0f, c}); }
+
+    void render_player_bubble() {
+        if (current_dialog_idx == -1) return;
+        auto& d = active_dialogues[current_dialog_idx];
+        
+        // Entrance animation scale
+        float entrance = std::min(1.0f, (15.0f - dialog_timer) * 4.0f);
+        float exit = std::min(1.0f, dialog_timer * 2.0f);
+        float scale = entrance * exit;
+        if (scale <= 0) return;
+
+        // Messenger Prompt (Top Center)
+        float my = 120.0f;
+        gfx.draw_filled_rect(WINDOW_W/2 - 300, my, 600, 60, {10, 10, 30, (Uint8)(200 * scale)});
+        gfx.draw_rect(WINDOW_W/2 - 300, my, 600, 60, {Colors::RESONANCE_GOLD.r, Colors::RESONANCE_GOLD.g, Colors::RESONANCE_GOLD.b, (Uint8)(255 * scale)});
+        gfx.draw_text_centered(d.msg, {WINDOW_W/2.0f, my + 30}, 20, {Colors::NEXUS_WHITE.r, Colors::NEXUS_WHITE.g, Colors::NEXUS_WHITE.b, (Uint8)(255 * scale)});
+
+        // Player Bubble (Follows player)
+        Vec2 bp = player->pos + Vec2(40, -120);
+        float bw = 240, bh = 140;
+        gfx.draw_filled_rect(bp.x, bp.y, bw * scale, bh * scale, {20, 20, 40, (Uint8)(230 * scale)});
+        gfx.draw_rect(bp.x, bp.y, bw * scale, bh * scale, {Colors::HARMONY_GOLD.r, Colors::HARMONY_GOLD.g, Colors::HARMONY_GOLD.b, (Uint8)(255 * scale)});
+        gfx.draw_line(bp + Vec2(0, bh * scale), player->pos); // Connecting line
+
+        if (scale > 0.8f) {
+            for(int i=0; i < (int)d.replies.size(); ++i) {
+                Color tc = (i == selected_reply) ? Colors::WHITE : Color(160, 160, 160, 255);
+                gfx.draw_text(std::format("{} {}", (i == selected_reply ? ">" : " "), d.replies[i]), {bp.x + 10, bp.y + 15 + i * 35.0f}, 16, tc);
+            }
+            gfx.draw_text_centered("1-3 TO REPLY", {bp.x + bw/2, bp.y + bh + 15}, 12, Colors::HARMONY_GOLD);
+            
+            // Timer Bar
+            float timer_pct = dialog_timer / 15.0f;
+            gfx.draw_filled_rect(bp.x, bp.y + bh - 4, bw * timer_pct, 4, Colors::HARMONY_GOLD);
+        }
+    }
+
+    void render_pause_menu() {
+        gfx.draw_filled_rect(0, 0, WINDOW_W, WINDOW_H, {5, 5, 15, 180});
+        gfx.draw_text_centered("VIGIL SUSPENDED", {static_cast<float>(WINDOW_W/2), static_cast<float>(WINDOW_H/2 - 50)}, 60, Colors::RESONANCE_GOLD);
+        float pulse = 0.5f + 0.5f * std::sin(stability_timer * 4.0f);
+        gfx.draw_text_centered("PRESS ESC TO RESUME PRAYER", {static_cast<float>(WINDOW_W/2), static_cast<float>(WINDOW_H/2 + 50)}, 24, {255, 255, 255, (Uint8)(255 * pulse)});
+    }
 
     void render_messenger() {
         float bw = 1000, bh = 640; Vec2 center(WINDOW_W/2, WINDOW_H/2); float x = center.x - bw/2; float y = center.y - bh/2;
@@ -150,6 +212,7 @@ class Engine {
         gfx.draw_rect(x, y, bw, bh, Colors::RESONANCE_GOLD);
         gfx.draw_rect(x + 5, y + 5, bw - 10, bh - 10, {200, 180, 50, 100});
         gfx.draw_text_centered("THE LENTEN ARCHIVE", {center.x, y + 60}, 42, Colors::RESONANCE_GOLD);
+        
         gfx.draw_line({center.x - 200, y + 90}, {center.x + 200, y + 90});
         float sb_x = x + bw - 25; float sb_y = y + 110; float sb_h = bh - 180;
         gfx.draw_filled_rect(sb_x, sb_y, 10, sb_h, {50, 50, 80, 100});
@@ -264,8 +327,16 @@ public:
             player->internal_pulse = 1.0f + m_state.intensity * 0.25f; glitch_speed_mult = 1.0f + m_state.intensity * 0.45f; music_intensity = m_state.intensity;
         }
 
-        if (state != State::PLAYING) return;
+        if (state != State::PLAYING || messenger_open) return;
         stability_timer += dt;
+        
+        // Random Dialogue Trigger (More frequent for visibility)
+        if (rand() % 2000 == 0) trigger_dialogue();
+        
+        if (current_dialog_idx != -1) {
+            dialog_timer -= dt;
+            if (dialog_timer <= 0) current_dialog_idx = -1;
+        }
         if (screenshake > 0) screenshake -= dt * 30.0f; else screenshake = 0;
         bg_flash = std::max(0.0f, bg_flash - dt * 0.5f);
         if (combo_timer > 0) combo_timer -= dt; else combo_count = 0;
@@ -315,6 +386,20 @@ public:
         int mx, my; SDL_GetMouseState(&mx, &my); player->angle = std::atan2(static_cast<float>(my) - player->pos.y, static_cast<float>(mx) - player->pos.x);
 
         if (keys[SDL_SCANCODE_SPACE] && player->dash_cooldown <= 0) { player->vel = move_input.norm() * 1500.0f; player->dash_cooldown = 1.0f; screenshake = 15.0f; spawn_particle_chaos(player->pos, Colors::RADIANT_TEAL, 30); apply_force_to_grid(player->pos, 180.0f, 300.0f); add_bloom(player->pos, 250.0f, Colors::RADIANT_TEAL); if (audio) audio->play_warp_jump(); }
+        
+        // PRAYER MECHANIC: Key P
+        static float prayer_cooldown = 0.0f;
+        if (prayer_cooldown > 0) prayer_cooldown -= dt;
+        if (keys[SDL_SCANCODE_P] && prayer_cooldown <= 0) {
+            prayer_cooldown = 5.0f;
+            player->integrity = std::min(player->max_integrity, player->integrity + 10.0f);
+            screenshake = 0; // Moment of peace
+            add_bloom(player->pos, 500.0f, Colors::RESONANCE_GOLD);
+            spawn_text_particle(player->pos, "SHORT PRAYER", Colors::RESONANCE_GOLD);
+            if (audio) audio->play_restoration_sigh();
+            apply_force_to_grid(player->pos, -100.0f, 400.0f); // Gentle pull towards player
+        }
+
         if (SDL_GetMouseState(NULL, NULL) & SDL_BUTTON(SDL_BUTTON_LEFT) && player->harmony_timer <= 0) {
             player->harmony_timer = player->harmony_rate; Vec2 fwd(std::cos(player->angle), std::sin(player->angle)); player->vel = player->vel - fwd * 70.0f; screenshake = 2.5f; if (audio) audio->play_divine_ray();
             for (int i = 0; i < player->ray_count; ++i) { float angle_offset = (i - (player->ray_count-1)/2.0f) * player->ray_spread; Vec2 dir(std::cos(player->angle + angle_offset), std::sin(player->angle + angle_offset)); new_entities.push_back(std::make_unique<HarmonyRay>(player->pos + dir * 20, dir * player->ray_speed, player->harmony_power * power_mult, Colors::NEXUS_WHITE, player->ray_pierce)); }
@@ -369,7 +454,7 @@ public:
 
         qtree->clear(); for (auto& e : entities) { if (e->type != ObjType::PARTICLE) qtree->insert(e.get()); }
         for (auto& e : entities) {
-            e->update(dt); if (e->dead) continue;
+            e->update(dt); if (e->ascended) continue;
             if (e->type == ObjType::GLITCH_BASIC || e->type == ObjType::GLITCH_TANK || e->type == ObjType::GLITCH_DASH || e->type == ObjType::GLITCH_BOSS || e->type == ObjType::GLITCH_SPLITTER) {
                 Glitch* g = static_cast<Glitch*>(e.get()); Vec2 dir = (player->pos - e->pos).norm();
                 if (e->type == ObjType::GLITCH_DASH) {
@@ -412,10 +497,10 @@ public:
                     for (auto n : nearby) { if (n != e.get() && (n->type == ObjType::GLITCH_BASIC || n->type == ObjType::GLITCH_DASH || n->type == ObjType::GLITCH_SPLITTER)) { static_cast<Glitch*>(n)->stability = std::min(static_cast<Glitch*>(n)->max_stability, static_cast<Glitch*>(n)->stability + 8.0f * dt); } }
                 }
                 e->vel = e->vel * 0.95f;
-                if (e->pos.dist(player->pos) < e->radius + player->radius) { player->integrity -= (e->type == ObjType::GLITCH_BOSS) ? 35 : 20; screenshake = (e->type == ObjType::GLITCH_BOSS) ? 35.0f : 15.0f; hit_stop = 0.1f; spawn_particle_chaos(player->pos, Colors::GOLD, 40); apply_force_to_grid(player->pos, 100.0f, 250.0f); if (audio) audio->play_player_damage(); trigger_divine_voice("I AM WITH YOU ALWAYS."); e->dead = (e->type != ObjType::GLITCH_BOSS); if (player->integrity <= 0) state = State::GAME_OVER; }
+                if (e->pos.dist(player->pos) < e->radius + player->radius) { player->integrity -= (e->type == ObjType::GLITCH_BOSS) ? 35 : 20; screenshake = (e->type == ObjType::GLITCH_BOSS) ? 35.0f : 15.0f; hit_stop = 0.1f; spawn_particle_chaos(player->pos, Colors::GOLD, 40); apply_force_to_grid(player->pos, 100.0f, 250.0f); if (audio) audio->play_player_damage(); trigger_divine_voice("I AM WITH YOU ALWAYS."); e->ascended = (e->type != ObjType::GLITCH_BOSS); if (player->integrity <= 0) state = State::GAME_OVER; }
             }
             if (e->type == ObjType::GLITCH_PROJECTILE) { 
-                if (e->pos.dist(player->pos) < e->radius + player->radius) { player->integrity -= 5; screenshake = 8.0f; spawn_particle_chaos(player->pos, Colors::RED, 15); if (audio) audio->play_player_damage(); e->dead = true; if (player->integrity <= 0) state = State::GAME_OVER; } 
+                if (e->pos.dist(player->pos) < e->radius + player->radius) { player->integrity -= 5; screenshake = 8.0f; spawn_particle_chaos(player->pos, Colors::RED, 15); if (audio) audio->play_player_damage(); e->ascended = true; if (player->integrity <= 0) state = State::GAME_OVER; } 
             }
             if (e->type == ObjType::HARMONY_PULSE) {
                 HarmonyPulse* p = static_cast<HarmonyPulse*>(e.get());
@@ -425,7 +510,7 @@ public:
                 qtree->query(Rect{p->pos.x - p->current_r, p->pos.y - p->current_r, p->current_r * 2, p->current_r * 2}, nearby);
                 for (auto n : nearby) {
                     if (n->pos.dist(p->pos) < p->current_r) {
-                        if (n->type == ObjType::GLITCH_PROJECTILE) n->dead = true;
+                        if (n->type == ObjType::GLITCH_PROJECTILE) n->ascended = true;
                         if (n->type == ObjType::GLITCH_BASIC || n->type == ObjType::GLITCH_DASH || n->type == ObjType::GLITCH_TANK || n->type == ObjType::GLITCH_SPLITTER) {
                             static_cast<Glitch*>(n)->stability -= 50.0f * dt; // Continuous stabilization
                             static_cast<Glitch*>(n)->hit_timer = 0.1f;
@@ -459,14 +544,14 @@ public:
                                 spawn_particle_chaos(ray->pos, Colors::NEXUS_WHITE, 5); 
                                 if (rand()%2==0) spawn_particle_chaos(ray->pos, Colors::HARMONY_GOLD, 2, 30.0f);
                                 apply_force_to_grid(ray->pos, 20.0f, 100.0f); if (audio) audio->play_impact(); 
-                                if (ray->pierce_left <= 0) ray->dead = true; else {
+                                if (ray->pierce_left <= 0) ray->ascended = true; else {
                                     ray->pierce_left--;
                                     ray->damage *= 1.2f; // Resonance: increased power per pierce
                                     player->integrity = std::min(player->max_integrity, player->integrity + 1.0f);
                                     spawn_text_particle(ray->pos, "RESONANCE", Colors::HARMONY_GOLD);
                                 }
                                 if (g->stability <= 0) {
-                                    g->dead = true; combo_count++; combo_timer = 1.5f; 
+                                    g->ascended = true; combo_count++; combo_timer = 1.5f; 
                                     score += (g->type == ObjType::GLITCH_BOSS) ? 1000 : 100;
                                     score += combo_count * 10;
                                     
@@ -474,13 +559,13 @@ public:
                                     if (combo_count % 10 == 0) {
                                         new_entities.push_back(std::make_unique<HarmonyPulse>(g->pos, 400.0f, Colors::RADIANT_TEAL));
                                         if (audio) audio->play_restoration_sigh();
-                                        trigger_divine_voice("MASS HARMONIZATION DETECTED.");
+                                        trigger_divine_voice("MASS ASCENSION DETECTED.");
                                     }
 
                                     spawn_particle_chaos(g->pos, Colors::GOLD, (g->type == ObjType::GLITCH_BOSS) ? 200 : 40, 180.0f);
                                     spawn_particle_chaos(g->pos, Colors::WHITE, (g->type == ObjType::GLITCH_BOSS) ? 100 : 20, 280.0f);
-                                    static const std::string notes[] = {"#", "b", "♪", "*", "♬", "♭", "♮"}; 
-                                    for(int i=0; i<6; ++i) { spawn_text_particle(g->pos + Vec2(rnd(-40, 40), rnd(-40, 40)), notes[rand()%7], Colors::NEXUS_WHITE); }
+                                    static const std::string restorative_notes[] = {"ASCENDED", "RESTORED", "INTO BEING", "TO LIGHT", "AMEN"}; 
+                                    for(int i=0; i<3; ++i) { spawn_text_particle(g->pos + Vec2(rnd(-40, 40), rnd(-40, 40)), restorative_notes[rand()%5], Colors::NEXUS_WHITE); }
                                     
                                     float h_force = (g->type == ObjType::GLITCH_BOSS) ? 600.0f : 250.0f;
                                     apply_force_to_grid(g->pos, h_force * (1.0f + music_intensity), 600.0f); 
@@ -495,7 +580,7 @@ public:
                         }
                     }
                 }
-                if (!ray->dead && ray->life < dt) { if (audio) audio->play_dissipate(); }
+                if (!ray->ascended && ray->life < dt) { if (audio) audio->play_dissipate(); }
             }
             if (e->type == ObjType::FRUIT_OF_SPIRIT) {
                 if (e->pos.dist(player->pos) < e->radius + player->radius) {
@@ -509,7 +594,7 @@ public:
 
                     if (audio) audio->play_collect_harmony(); 
                     trigger_divine_voice("GRACE IS POURED ABROAD IN THY LIPS."); 
-                    e->dead = true;
+                    e->ascended = true;
                 }
             }
         }
@@ -520,12 +605,12 @@ public:
             if (orb_ptr->type == ObjType::HARMONY_ORB) {
                 float dist = orb_ptr->pos.dist(player->pos);
                 if (dist < player->siphon_range) { float pull_force = 1500.0f * (1.0f - dist / player->siphon_range); orb_ptr->vel = orb_ptr->vel + (player->pos - orb_ptr->pos).norm() * pull_force * dt; siphoning_count++; gfx.set_color(Colors::HARMONY_GOLD, 0.3f); gfx.draw_line(orb_ptr->pos, player->pos); }
-                if (dist < player->radius + 15.0f) { orb_ptr->dead = true; player->harmony_xp += static_cast<HarmonyOrb*>(orb_ptr)->value; if (audio) audio->play_collect_harmony(); if (player->harmony_xp >= player->harmony_next) { player->harmony_xp = 0; player->harmony_next *= 1.25f; player->level++; state = State::EVOLUTION; if (audio) audio->play_divine_ascent(); trigger_divine_voice("ASCEND IN VIRTUE."); } }
+                if (dist < player->radius + 15.0f) { orb_ptr->ascended = true; player->harmony_xp += static_cast<HarmonyOrb*>(orb_ptr)->value; if (audio) audio->play_collect_harmony(); if (player->harmony_xp >= player->harmony_next) { player->harmony_xp = 0; player->harmony_next *= 1.25f; player->level++; state = State::EVOLUTION; if (audio) audio->play_divine_ascent(); trigger_divine_voice("ASCEND IN VIRTUE."); } }
             }
         }
         if (siphoning_count > 0) player->integrity = std::min(player->max_integrity, player->integrity + siphoning_count * 0.5f * dt);
         for(auto& ne : new_entities) entities.push_back(std::move(ne));
-        new_entities.clear(); std::erase_if(entities, [](const auto& e) { return e->dead; });
+        new_entities.clear(); std::erase_if(entities, [](const auto& e) { return e->ascended; });
     }
 
     void render() {
@@ -629,7 +714,14 @@ public:
                     gfx.set_color(Colors::WHITE, alpha * 0.8f);
                     gfx.draw_circle(p->pos, p->current_r - 2.0f);
                     gfx.draw_bloom(p->pos, p->current_r, p->color);
-                } else if (e->type != ObjType::PLAYER && e->type != ObjType::HARMONY_ORB) {
+                } else if (e->type == ObjType::HARMONY_ORB) {
+                    HarmonyOrb* orb = static_cast<HarmonyOrb*>(e.get());
+                    float p = std::abs(std::sin(orb->pulse_timer));
+                    float size = orb->radius * (0.8f + p * 0.4f);
+                    gfx.draw_glowing_circle(e->pos, size, e->color);
+                    // Sacred cross inside the orb to distinguish from projectiles
+                    gfx.draw_cross(e->pos, size * 0.6f, Colors::WHITE, 1.0f);
+                } else if (e->type != ObjType::PLAYER) {
                     if (e->type == ObjType::GLITCH_BASIC || e->type == ObjType::GLITCH_DASH || e->type == ObjType::GLITCH_TANK || e->type == ObjType::GLITCH_BOSS || e->type == ObjType::GLITCH_SPLITTER) {
                         Glitch* g = static_cast<Glitch*>(e.get()); float hit_scale = 1.0f + (g->hit_timer > 0 ? g->hit_timer * 2.0f : 0.0f); Color draw_c = g->hit_timer > 0 ? Colors::WHITE : g->color;
                         if (e->type == ObjType::GLITCH_DASH) { 
@@ -763,7 +855,9 @@ public:
             gfx.draw_text_centered("THE LIGHT OF CHRIST SHINES", {static_cast<float>(WINDOW_W/2), 380}, 32, Colors::NEXUS_WHITE);
             gfx.draw_text_centered("PRESS SPACE TO CONTINUE THE JOURNEY", {static_cast<float>(WINDOW_W/2), 550}, 26, Colors::HARMONY_GOLD);
         }
+        if (state == State::PAUSED) render_pause_menu();
         if (messenger_open) render_messenger();
+        if (current_dialog_idx != -1 && !messenger_open) render_player_bubble();
         
         // Post-processing: Scanlines
         gfx.draw_scanlines(WINDOW_W, WINDOW_H, stability_timer);
@@ -786,12 +880,37 @@ public:
             while (SDL_PollEvent(&ev)) {
                 if (ev.type == SDL_QUIT) running = false;
                 if (ev.type == SDL_MOUSEBUTTONDOWN) {
-                    if (messenger_open) messenger_open = false;
-                    else { int mx, my; SDL_GetMouseState(&mx, &my); if (mx > WINDOW_W - 120 && my < 120) { messenger_open = true; messenger_scroll = 0; } }
+                    if (messenger_open) {
+                        if (current_dialog_idx == -1) messenger_open = false;
+                    }
+                    else { int mx, my; SDL_GetMouseState(&mx, &my); if (mx > WINDOW_W - 120 && my < 120) { messenger_open = true; messenger_scroll = 0; current_dialog_idx = -1; } }
                 }
                 if (ev.type == SDL_MOUSEWHEEL && messenger_open) { messenger_scroll -= ev.wheel.y * 40.0f; float max_scroll = std::max(0.0f, (static_cast<float>(divine_prose.size()) * 120.0f) - 300.0f); messenger_scroll = std::clamp(messenger_scroll, 0.0f, max_scroll); }
                 if (ev.type == SDL_KEYDOWN) {
-                    if (ev.key.keysym.sym == SDLK_ESCAPE) running = false;
+                    if (ev.key.keysym.sym == SDLK_ESCAPE) {
+                        if (messenger_open) {
+                            messenger_open = false;
+                        } else if (state == State::PLAYING) {
+                            state = State::PAUSED;
+                        } else if (state == State::PAUSED) {
+                            state = State::PLAYING;
+                        } else {
+                            running = false;
+                        }
+                    }
+                    if (current_dialog_idx != -1 && !messenger_open) {
+                        int reply_idx = -1;
+                        if (ev.key.keysym.sym == SDLK_1) reply_idx = 0;
+                        if (ev.key.keysym.sym == SDLK_2) reply_idx = 1;
+                        if (ev.key.keysym.sym == SDLK_3) reply_idx = 2;
+                        
+                        if (reply_idx != -1 && reply_idx < (int)active_dialogues[current_dialog_idx].replies.size()) {
+                            current_dialog_idx = -1;
+                            player->integrity = std::min(player->max_integrity, player->integrity + 5.0f);
+                            spawn_text_particle(player->pos, "COMMUNION +5%", Colors::HARMONY_GOLD);
+                            if (audio) audio->play_collect_harmony();
+                        }
+                    }
                     if (state == State::MENU && ev.key.keysym.sym == SDLK_SPACE) state = State::PLAYING;
                     if ((state == State::GAME_OVER || state == State::VICTORY) && ev.key.keysym.sym == SDLK_SPACE) { reset_game(); state = State::PLAYING; }
                     if (state == State::EVOLUTION) {
